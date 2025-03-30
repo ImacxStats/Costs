@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Consumos</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Incluir Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.33.2/dist/umd/supabase.min.js"></script>
+    <!-- Incluir Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Incluir Feather Icons (para iconografia minimalista) -->
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="logo">DASHBOARD</div>
+            <ul>
+                <li><a href="#" data-section="calculadora" class="active"><i data-feather="dollar-sign"></i><span>Calculadora</span></a></li>
+                <li><a href="#" data-section="tabela_precos"><i data-feather="list"></i><span>Tabela de Preços</span></a></li>
+                <li class="nav-separator"></li>
+                <li><a href="#" data-section="materiais_impressao"><i data-feather="printer"></i><span>Materiais Impressão</span></a></li>
+                <li><a href="#" data-section="cola"><i data-feather="droplet"></i><span>Cola</span></a></li>
+                <li><a href="#" data-section="embalamento"><i data-feather="package"></i><span>Embalamento</span></a></li>
+                <li><a href="#" data-section="fitas_adesivas"><i data-feather="film"></i><span>Fitas Adesivas</span></a></li>
+                <li><a href="#" data-section="outros"><i data-feather="archive"></i><span>Outros</span></a></li>
+                <li><a href="#" data-section="maquinas"><i data-feather="settings"></i><span>Máquinas</span></a></li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <div id="loading-indicator" class="loading">Carregando...</div>
+
+            <!-- Seção Materiais Impressão -->
+            <section id="materiais_impressao-section" class="data-section">
+                <h2>Materiais de Impressão</h2>
+                <div class="section-content">
+                    <div class="filter-container glassmorphism">
+                        <label for="materiais_impressao-filter">Filtrar por Material:</label>
+                        <select id="materiais_impressao-filter" class="material-filter">
+                            <option value="all">Todos</option>
+                            <!-- Options will be populated by JS -->
+                        </select>
+                    </div>
+                    <div class="table-container glassmorphism">
+                        <table id="materiais_impressao-table">
+                            <thead>
+                                <!-- Cabeçalhos serão gerados pelo JS -->
+                            </thead>
+                            <tbody>
+                                <!-- Dados serão inseridos pelo JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="charts-container">
+                        <div class="chart-wrapper glassmorphism">
+                            <canvas id="materiais_impressao-chart-volume"></canvas>
+                        </div>
+                        <div class="chart-wrapper glassmorphism">
+                            <canvas id="materiais_impressao-chart-valor"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção Cola -->
+            <section id="cola-section" class="data-section">
+                <h2>Cola</h2>
+                 <div class="section-content">
+                    <div class="table-container glassmorphism">
+                        <table id="cola-table">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="charts-container">
+                         <div class="chart-wrapper glassmorphism">
+                            <canvas id="cola-chart-volume"></canvas>
+                        </div>
+                        <div class="chart-wrapper glassmorphism">
+                            <canvas id="cola-chart-valor"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção Embalamento -->
+            <section id="embalamento-section" class="data-section">
+                <h2>Embalamento</h2>
+                 <div class="section-content">
+                    <div class="filter-container glassmorphism">
+                        <label for="embalamento-filter">Filtrar por Material:</label>
+                        <select id="embalamento-filter" class="material-filter">
+                            <option value="all">Todos</option>
+                            <!-- Options will be populated by JS -->
+                        </select>
+                    </div>
+                    <div class="table-container glassmorphism">
+                         <table id="embalamento-table">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="charts-container single-chart"> <!-- Classe para ajustar layout se necessário -->
+                         <div class="chart-wrapper glassmorphism">
+                            <canvas id="embalamento-chart-2024"></canvas>
+                         </div>
+                    </div>
+                 </div>
+            </section>
+
+            <!-- Seção Fitas Adesivas -->
+            <section id="fitas_adesivas-section" class="data-section">
+                <h2>Fitas Adesivas</h2>
+                 <div class="section-content">
+                    <div class="filter-container glassmorphism">
+                        <label for="fitas_adesivas-filter">Filtrar por Material:</label>
+                        <select id="fitas_adesivas-filter" class="material-filter">
+                            <option value="all">Todos</option>
+                            <!-- Options will be populated by JS -->
+                        </select>
+                    </div>
+                    <div class="table-container glassmorphism">
+                         <table id="fitas_adesivas-table">
+                             <thead></thead>
+                             <tbody></tbody>
+                         </table>
+                    </div>
+                     <div class="charts-container">
+                         <div class="chart-wrapper glassmorphism">
+                            <canvas id="fitas_adesivas-chart-volume"></canvas>
+                        </div>
+                        <div class="chart-wrapper glassmorphism">
+                            <canvas id="fitas_adesivas-chart-valor"></canvas>
+                        </div>
+                    </div>
+                 </div>
+            </section>
+
+            <!-- Seção Outros -->
+            <section id="outros-section" class="data-section">
+                <h2>Outros</h2>
+                 <div class="section-content">
+                    <div class="filter-container glassmorphism">
+                        <label for="outros-filter">Filtrar por Material:</label>
+                        <select id="outros-filter" class="material-filter">
+                            <option value="all">Todos</option>
+                            <!-- Options will be populated by JS -->
+                        </select>
+                    </div>
+                    <div class="table-container glassmorphism">
+                         <table id="outros-table">
+                             <thead></thead>
+                             <tbody></tbody>
+                         </table>
+                    </div>
+                     <div class="charts-container single-chart">
+                        <div class="chart-wrapper glassmorphism">
+                             <canvas id="outros-chart-2024"></canvas>
+                        </div>
+                    </div>
+                 </div>
+            </section>
+
+            <!-- Seção Gestão de Máquinas -->
+            <section id="maquinas-section" class="data-section">
+                <h2>Gestão de Máquinas</h2>
+                <div class="section-content">
+                    <div class="maquina-form-container glassmorphism">
+                        <!-- Record Navigation for Maquinas -->
+                        <div class="record-navigation" id="maquina-navigation">
+                            <button id="maquina-prev-button" class="nav-button"><i data-feather="arrow-left"></i> Anterior</button>
+                            <span id="maquina-record-indicator">- / -</span>
+                            <span id="maquina-id-display" class="record-id-display"></span>
+                            <button id="maquina-next-button" class="nav-button">Próximo <i data-feather="arrow-right"></i></button>
+                        </div>
+
+                        <form id="maquina-form">
+                            <div class="maquina-select-group">
+                                <label for="maquina-select-edit">Selecionar Máquina:</label>
+                                <select id="maquina-select-edit">
+                                    <option value="_new">--- Nova Máquina ---</option>
+                                    <!-- Options populated by JS -->
+                                </select>
+                                <button type="button" id="maquina-novo-button" class="nav-button">Novo</button>
+                            </div>
+
+                            <div class="maquina-fields">
+                                <div class="input-group">
+                                    <label for="maquina-nome-input">Nome da Máquina:</label>
+                                    <input type="text" id="maquina-nome-input" name="maquina" placeholder="Nome da máquina...">
+                                </div>
+                                <div class="input-group">
+                                    <label for="maquina-valor-input">Valor/m² (€):</label>
+                                    <input type="number" id="maquina-valor-input" name="valor_m2" step="0.01" placeholder="0.00">
+                                </div>
+                            </div>
+
+                            <div class="maquina-actions">
+                                <button type="submit" id="maquina-save-button" class="save-button">
+                                    <i data-feather="save"></i> Guardar Máquina
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <p id="maquinas-status" style="margin-top: 10px; text-align: center;"></p>
+                </div>
+            </section>
+
+            <!-- Seção Calculadora de Materiais -->
+            <section id="calculadora-section" class="data-section active-section">
+                <h2>Calculadora de Materiais</h2>
+                <div class="section-content">
+                    <div class="calculator-container glassmorphism">
+                        <!-- Record Navigation -->
+                        <div class="record-navigation">
+                            <button id="prev-record" class="nav-button"><i data-feather="arrow-left"></i> Anterior</button>
+                            <span id="record-indicator">- / -</span>
+                            <button id="next-record" class="nav-button">Próximo <i data-feather="arrow-right"></i></button>
+                            <div class="search-record">
+                                <input type="number" id="search-calc-id" placeholder="Buscar ID...">
+                                <button id="search-button" class="nav-button"><i data-feather="search"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Wrap Material Selections -->
+                        <div class="materials-row">
+                            <!-- Material 1 Selection -->
+                            <div class="material-selection">
+                                <div class="material-header">
+                                    <h3>Material 1</h3>
+                                    <button class="clear-button" data-material-num="1" title="Limpar Material 1"><i data-feather="x"></i></button>
+                                </div>
+                                <div class="material-dropdowns">
+                                    <select id="material1-tipo" class="material-dropdown">
+                                        <option value="">Selecione o Tipo</option>
+                                    </select>
+                                    <select id="material1-material" class="material-dropdown" disabled>
+                                        <option value="">Selecione o Material</option>
+                                    </select>
+                                    <select id="material1-caracteristica" class="material-dropdown" disabled>
+                                        <option value="">Selecione a Característica</option>
+                                    </select>
+                                    <select id="material1-cor" class="material-dropdown" disabled>
+                                        <option value="">Selecione a Cor</option>
+                                    </select>
+                                </div>
+                                <div class="material-price">
+                                    <span>Preço/m²: </span>
+                                    <span id="material1-price">0.00€</span>
+                                </div>
+                            </div>
+
+                            <!-- Material 2 Selection -->
+                            <div class="material-selection">
+                                <div class="material-header">
+                                    <h3>Material 2 (Opcional)</h3>
+                                    <button class="clear-button" data-material-num="2" title="Limpar Material 2"><i data-feather="x"></i></button>
+                                </div>
+                                <div class="material-dropdowns">
+                                    <select id="material2-tipo" class="material-dropdown">
+                                        <option value="">Selecione o Tipo</option>
+                                    </select>
+                                    <select id="material2-material" class="material-dropdown" disabled>
+                                        <option value="">Selecione o Material</option>
+                                    </select>
+                                    <select id="material2-caracteristica" class="material-dropdown" disabled>
+                                        <option value="">Selecione a Característica</option>
+                                    </select>
+                                    <select id="material2-cor" class="material-dropdown" disabled>
+                                        <option value="">Selecione a Cor</option>
+                                    </select>
+                                </div>
+                                <div class="material-price">
+                                    <span>Preço/m²: </span>
+                                    <span id="material2-price">0.00€</span>
+                                </div>
+                            </div>
+
+                            <!-- Material 3 Selection -->
+                            <div class="material-selection">
+                                <div class="material-header">
+                                    <h3>Material 3 (Opcional)</h3>
+                                    <button class="clear-button" data-material-num="3" title="Limpar Material 3"><i data-feather="x"></i></button>
+                                </div>
+                                <div class="material-dropdowns">
+                                    <select id="material3-tipo" class="material-dropdown">
+                                        <option value="">Selecione o Tipo</option>
+                                    </select>
+                                    <select id="material3-material" class="material-dropdown" disabled>
+                                        <option value="">Selecione o Material</option>
+                                    </select>
+                                    <select id="material3-caracteristica" class="material-dropdown" disabled>
+                                        <option value="">Selecione a Característica</option>
+                                    </select>
+                                    <select id="material3-cor" class="material-dropdown" disabled>
+                                        <option value="">Selecione a Cor</option>
+                                    </select>
+                                </div>
+                                <div class="material-price">
+                                    <span>Preço/m²: </span>
+                                    <span id="material3-price">0.00€</span>
+                                </div>
+                            </div>
+                        </div> <!-- End .materials-row -->
+
+                        <!-- Machine Selection -->
+                        <div class="machine-selection">
+                            <div class="material-header">
+                                 <h3>Máquina</h3>
+                                 <button class="clear-button" id="clear-machine" title="Limpar Máquina"><i data-feather="x"></i></button>
+                            </div>
+                            <select id="machine-select" class="machine-dropdown">
+                                <option value="">Selecione a Máquina</option>
+                            </select>
+                            <div class="machine-price">
+                                <span>Custo/m²: </span>
+                                <span id="machine-price">0.00€</span>
+                            </div>
+                        </div>
+
+                        <!-- Calculations -->
+                        <div class="calculations">
+                            <div class="cost-breakdown">
+                                <h3>Custos</h3>
+                                <div class="cost-item">
+                                    <span>Custo Total Materiais:</span>
+                                    <span id="total-materials-cost">0.00€</span>
+                                </div>
+                                <div class="cost-item">
+                                    <span>Custo Total Máquina:</span>
+                                    <span id="total-machine-cost">0.00€</span>
+                                </div>
+                                <div class="cost-item total">
+                                    <span>Custo Líquido Total:</span>
+                                    <span id="total-net-cost">0.00€</span>
+                                </div>
+                            </div>
+
+                            <!-- Margin & Price Section -->
+                            <div class="margin-price-section">
+                                <h3>Margem e Preço Final</h3>
+                                <div class="margin-price-grid">
+                                    <div class="input-group margin-input-group">
+                                        <label for="margin-input">Margem (%):</label>
+                                        <input type="number" id="margin-input" min="0" step="0.1" value="0">
+                                    </div>
+                                    <div class="display-group final-price-group">
+                                        <label>Preço Final:</label>
+                                        <div class="price-value-box" id="final-price">0.00€</div>
+                                    </div>
+                                    <div class="input-group current-price-input-group">
+                                        <label for="current-price-input">Preço Atual:</label>
+                                        <input type="text" id="current-price-input" placeholder="0.00">
+                                    </div>
+                                    <div class="display-group price-difference-group">
+                                        <label>Diferença (%):</label>
+                                        <div class="price-value-box" id="price-difference">0%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes & Save Button -->
+                        <div class="notes-save-section">
+                             <div class="notes-input">
+                                <h3>Notas</h3>
+                                <textarea name="notes" placeholder="Adicione observações sobre este cálculo..." rows="3"></textarea>
+                            </div>
+                            <div class="save-section">
+                                <button id="save-calculation" class="save-button">
+                                    <i data-feather="save"></i>
+                                    Guardar Cálculo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção Tabela de Preços -->
+            <section id="tabela_precos-section" class="data-section">
+                <h2>Tabela de Preços</h2>
+                <div class="section-content">
+                    <div class="table-container glassmorphism">
+                        <table id="tabela_precos-table">
+                            <thead>
+                                <!-- Headers will be populated by JS -->
+                            </thead>
+                            <tbody>
+                                <!-- Data will be populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+      feather.replace(); // Inicializa os ícones Feather
+    </script>
+</body>
+</html>
