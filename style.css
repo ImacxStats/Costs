@@ -432,7 +432,7 @@ canvas {
 
 .material-price,
 .machine-price {
-    margin-top: 0.5rem;
+    margin-top: 1rem;
     font-size: 0.95em; /* Slightly larger */
     color: var(--accent-color);
     font-weight: 500;
@@ -1013,3 +1013,175 @@ canvas {
     height: 16px;
     stroke-width: 2;
 }
+
+/* --- Generic Modal Styles --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* Ensure it's on top */
+}
+
+.modal-content {
+    padding: 2.5rem; /* More padding */
+    max-width: 600px; /* Limit width */
+    width: 90%;
+    position: relative;
+    background: var(--surface-color); /* Use existing variable */
+    border-radius: 8px; /* Consistent rounding */
+}
+
+.modal-close-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.8rem; /* Larger close icon */
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.2rem;
+    line-height: 1;
+}
+
+.modal-close-button:hover {
+    color: var(--text-primary);
+}
+
+#modal-title {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+#generic-modal-form .input-group {
+    margin-bottom: 1.2rem;
+}
+
+#generic-modal-form label {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+#generic-modal-form input[type="text"],
+#generic-modal-form input[type="number"],
+#generic-modal-form select {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-primary);
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+#generic-modal-form input:focus,
+#generic-modal-form select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 5px var(--accent-glow);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-actions .save-button, 
+.modal-actions .cancel-button {
+    padding: 0.7rem 1.2rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.3s, transform 0.1s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95em;
+}
+
+.modal-actions .cancel-button {
+    background-color: var(--surface-color-lighter); /* Button background */
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-actions .cancel-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.modal-status-message {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.9em;
+    min-height: 1.2em; /* Reserve space */
+}
+
+/* Add styles for the new add button and actions container */
+.actions-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    gap: 1rem; /* Space between filter and button */
+    padding: 1rem; /* Add padding inside the container */
+}
+
+.add-new-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    background: var(--accent-color);
+    color: #111;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.3s, transform 0.1s;
+    font-size: 0.9em;
+}
+
+.add-new-button:hover {
+    background: #ff9933;
+}
+
+.add-new-button:active {
+    transform: scale(0.98);
+}
+
+.add-new-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Responsive adjustments for actions container */
+@media (max-width: 600px) {
+    .actions-container {
+        flex-direction: column;
+        align-items: stretch; /* Make items take full width */
+    }
+    .actions-container .filter-container {
+        width: 100%; /* Make filter take full width */
+    }
+    .actions-container .add-new-button {
+        width: 100%; /* Make button take full width */
+        justify-content: center; /* Center button content */
+    }
+}
+
+/* --- Final Styles --- */

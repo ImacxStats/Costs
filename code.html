@@ -39,12 +39,15 @@
             <section id="materiais_impressao-section" class="data-section">
                 <h2>Materiais de Impressão</h2>
                 <div class="section-content">
-                    <div class="filter-container glassmorphism">
-                        <label for="materiais_impressao-filter">Filtrar por Material:</label>
-                        <select id="materiais_impressao-filter" class="material-filter">
-                            <option value="all">Todos</option>
-                            <!-- Options will be populated by JS -->
-                        </select>
+                    <div class="actions-container glassmorphism">
+                        <div class="filter-container">
+                            <label for="materiais_impressao-filter">Filtrar por Material:</label>
+                            <select id="materiais_impressao-filter" class="material-filter">
+                                <option value="all">Todos</option>
+                                <!-- Options will be populated by JS -->
+                            </select>
+                        </div>
+                        <button class="add-new-button" data-table="materiais_impressao"><i data-feather="plus"></i> Adicionar Novo</button>
                     </div>
                     <div class="table-container glassmorphism">
                         <table id="materiais_impressao-table">
@@ -71,6 +74,9 @@
             <section id="cola-section" class="data-section">
                 <h2>Cola</h2>
                  <div class="section-content">
+                    <div class="actions-container glassmorphism">
+                        <button class="add-new-button" data-table="cola"><i data-feather="plus"></i> Adicionar Novo</button>
+                    </div>
                     <div class="table-container glassmorphism">
                         <table id="cola-table">
                             <thead></thead>
@@ -92,12 +98,15 @@
             <section id="embalamento-section" class="data-section">
                 <h2>Embalamento</h2>
                  <div class="section-content">
-                    <div class="filter-container glassmorphism">
-                        <label for="embalamento-filter">Filtrar por Material:</label>
-                        <select id="embalamento-filter" class="material-filter">
-                            <option value="all">Todos</option>
-                            <!-- Options will be populated by JS -->
-                        </select>
+                    <div class="actions-container glassmorphism">
+                        <div class="filter-container">
+                            <label for="embalamento-filter">Filtrar por Material:</label>
+                            <select id="embalamento-filter" class="material-filter">
+                                <option value="all">Todos</option>
+                                <!-- Options will be populated by JS -->
+                            </select>
+                        </div>
+                        <button class="add-new-button" data-table="embalamento"><i data-feather="plus"></i> Adicionar Novo</button>
                     </div>
                     <div class="table-container glassmorphism">
                          <table id="embalamento-table">
@@ -117,12 +126,15 @@
             <section id="fitas_adesivas-section" class="data-section">
                 <h2>Fitas Adesivas</h2>
                  <div class="section-content">
-                    <div class="filter-container glassmorphism">
-                        <label for="fitas_adesivas-filter">Filtrar por Material:</label>
-                        <select id="fitas_adesivas-filter" class="material-filter">
-                            <option value="all">Todos</option>
-                            <!-- Options will be populated by JS -->
-                        </select>
+                    <div class="actions-container glassmorphism">
+                        <div class="filter-container">
+                            <label for="fitas_adesivas-filter">Filtrar por Material:</label>
+                            <select id="fitas_adesivas-filter" class="material-filter">
+                                <option value="all">Todos</option>
+                                <!-- Options will be populated by JS -->
+                            </select>
+                        </div>
+                        <button class="add-new-button" data-table="fitas_adesivas"><i data-feather="plus"></i> Adicionar Novo</button>
                     </div>
                     <div class="table-container glassmorphism">
                          <table id="fitas_adesivas-table">
@@ -145,12 +157,15 @@
             <section id="outros-section" class="data-section">
                 <h2>Outros</h2>
                  <div class="section-content">
-                    <div class="filter-container glassmorphism">
-                        <label for="outros-filter">Filtrar por Material:</label>
-                        <select id="outros-filter" class="material-filter">
-                            <option value="all">Todos</option>
-                            <!-- Options will be populated by JS -->
-                        </select>
+                    <div class="actions-container glassmorphism">
+                        <div class="filter-container">
+                            <label for="outros-filter">Filtrar por Material:</label>
+                            <select id="outros-filter" class="material-filter">
+                                <option value="all">Todos</option>
+                                <!-- Options will be populated by JS -->
+                            </select>
+                        </div>
+                        <button class="add-new-button" data-table="outros"><i data-feather="plus"></i> Adicionar Novo</button>
                     </div>
                     <div class="table-container glassmorphism">
                          <table id="outros-table">
@@ -218,16 +233,11 @@
                     <div class="calculator-container glassmorphism">
                         <!-- Top Actions Bar -->
                         <div class="top-actions-bar">
-                            <div class="record-navigation">
-                                <button id="prev-record" class="nav-button"><i data-feather="arrow-left"></i> Anterior</button>
-                                <span id="record-indicator">- / -</span>
-                                <button id="next-record" class="nav-button">Próximo <i data-feather="arrow-right"></i></button>
-                                <div class="search-record">
+                            <div class="main-actions" style="justify-content: flex-end; width: 100%;">
+                                <div class="search-record" style="margin-right: auto;">
                                     <input type="number" id="search-calc-id" placeholder="Buscar ID...">
                                     <button id="search-button" class="nav-button"><i data-feather="search"></i></button>
                                 </div>
-                            </div>
-                            <div class="main-actions">
                                 <button id="new-calculation" class="nav-button">
                                     <i data-feather="plus"></i> Novo Cálculo
                                 </button>
@@ -319,7 +329,7 @@
                         </div> <!-- End .materials-row -->
 
                         <!-- Machine Selection -->
-                        <div class="machine-selection">
+                        <div class="machine-selection" style="margin-top: 20px;">
                             <div class="material-header">
                                  <h3>Máquina</h3>
                                  <button class="clear-button" id="clear-machine" title="Limpar Máquina"><i data-feather="x"></i></button>
@@ -327,9 +337,16 @@
                             <select id="machine-select" class="machine-dropdown">
                                 <option value="">Selecione a Máquina</option>
                             </select>
-                            <div class="machine-price">
-                                <span>Custo/m²: </span>
-                                <span id="machine-price">0.00€</span>
+                            <!-- Restructured machine price/option section -->
+                            <div class="machine-options-price" style="margin-top: 1rem;"> 
+                                <div class="machine-4x4-option" style="margin-bottom: 0.5rem;"> 
+                                    <input type="checkbox" id="machine-4x4-checkbox" style="vertical-align: middle;">
+                                    <label for="machine-4x4-checkbox" style="vertical-align: middle; margin-left: 5px;">4/4</label>
+                                </div>
+                                <div class="machine-price-display" style="font-size: 0.95em; color: var(--accent-color); font-weight: 500;">
+                                    <span>Custo/m²: </span>
+                                    <span id="machine-price">0.00€</span>
+                                </div>
                             </div>
                         </div>
 
@@ -408,6 +425,26 @@
             </section>
 
         </main>
+    </div>
+
+    <!-- Generic Edit/Add Modal -->
+    <div id="generic-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glassmorphism">
+            <button class="modal-close-button">&times;</button>
+            <h3 id="modal-title">Editar/Adicionar Registo</h3>
+            <form id="generic-modal-form">
+                <input type="hidden" id="modal-record-id" name="id">
+                <input type="hidden" id="modal-table-name" name="tableName">
+                <div id="modal-form-fields">
+                    <!-- Fields will be dynamically added here -->
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="save-button">Guardar</button>
+                    <button type="button" class="cancel-button">Cancelar</button>
+                </div>
+            </form>
+            <p id="modal-status" class="modal-status-message"></p>
+        </div>
     </div>
 
     <script src="script.js"></script>

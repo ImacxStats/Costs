@@ -56,6 +56,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabelaPrecosSearchInput = document.getElementById('tabela_precos-search-input');
     const tabelaPrecosSearchButton = document.getElementById('tabela_precos-search-button');
 
+    // --- Modal Elements ---
+    const modalOverlay = document.getElementById('generic-modal');
+    const modalContent = modalOverlay?.querySelector('.modal-content');
+    const modalTitle = document.getElementById('modal-title');
+    const modalForm = document.getElementById('generic-modal-form');
+    const modalFormFields = document.getElementById('modal-form-fields');
+    const modalRecordIdInput = document.getElementById('modal-record-id');
+    const modalTableNameInput = document.getElementById('modal-table-name');
+    const modalSaveButton = modalForm?.querySelector('.save-button');
+    const modalCancelButton = modalForm?.querySelector('.cancel-button');
+    const modalCloseButton = modalOverlay?.querySelector('.modal-close-button');
+    const modalStatus = document.getElementById('modal-status');
+
     // --- Estado ---
     let currentSection = 'materiais_impressao'; // Seção inicial
     let chartInstances = {}; // Armazena instâncias de gráficos para destruição
@@ -78,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const TABLE_CONFIG = {
         materiais_impressao: {
             columns: [
+                { key: 'id', label: 'ID', type: 'number' }, // Assuming 'id' is the PK
                 { key: 'tipo', label: 'Tipo' },
                 { key: 'material', label: 'Material' },
                 { key: 'caracteristica', label: 'Característica' },
@@ -91,11 +105,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 { key: 'media_m2_2023', label: 'Média m² 2023', type: 'currency', align: 'right' },
                 { key: 'media_m2_2024', label: 'Média m² 2024', type: 'currency', align: 'right' },
                 { key: 'percentual_variacao_media_m2', label: 'Var Média %', type: 'percentage', align: 'right' },
+                { key: 'actions', label: 'Ações', sortable: false, align: 'center', render: (row) => renderActionButtons(row.id) } // Add Actions
             ],
             charts: ['volume', 'valor']
         },
         cola: {
             columns: [
+                { key: 'id', label: 'ID', type: 'number' }, // Assuming 'id' is the PK
                 { key: 'tipo', label: 'Tipo' },
                 { key: 'material', label: 'Material' },
                 { key: 'quantidade_2023', label: 'Qtd 2023', type: 'number', align: 'right' },
@@ -103,22 +119,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Excluindo percentuais conforme solicitado
                 { key: 'valor_2023', label: 'Valor 2023', type: 'currency', align: 'right' },
                 { key: 'valor_2024', label: 'Valor 2024', type: 'currency', align: 'right' },
+                { key: 'actions', label: 'Ações', sortable: false, align: 'center', render: (row) => renderActionButtons(row.id) } // Add Actions
             ],
              charts: ['volume', 'valor']
         },
         embalamento: {
             columns: [
+                { key: 'id', label: 'ID', type: 'number' }, // Assuming 'id' is the PK
                 { key: 'tipo', label: 'Tipo' },
                 { key: 'material', label: 'Material' },
                 { key: 'caracteristica', label: 'Característica' },
                 { key: 'quantidade_2024', label: 'Qtd 2024', type: 'number', align: 'right' },
                 { key: 'valor_2024', label: 'Valor 2024', type: 'currency', align: 'right' },
                 { key: 'media_vl_unit_2024', label: 'Média Unit 2024', type: 'currency', align: 'right' },
+                { key: 'actions', label: 'Ações', sortable: false, align: 'center', render: (row) => renderActionButtons(row.id) } // Add Actions
             ],
             charts: ['2024']
         },
         fitas_adesivas: {
             columns: [
+                 { key: 'id', label: 'ID', type: 'number' }, // Assuming 'id' is the PK
                  { key: 'tipo', label: 'Tipo' },
                  { key: 'material', label: 'Material' },
                  { key: 'caracteristica', label: 'Característica' },
@@ -132,17 +152,20 @@ document.addEventListener('DOMContentLoaded', () => {
                  { key: 'media_ml_2023', label: 'Média ml 2023', type: 'currency', align: 'right' },
                  { key: 'media_ml_2024', label: 'Média ml 2024', type: 'currency', align: 'right' },
                  { key: 'percentual_variacao_media_ml', label: 'Var Média %', type: 'percentage', align: 'right' },
+                 { key: 'actions', label: 'Ações', sortable: false, align: 'center', render: (row) => renderActionButtons(row.id) } // Add Actions
             ],
              charts: ['volume', 'valor']
         },
         outros: {
              columns: [
+                { key: 'id', label: 'ID', type: 'number' }, // Assuming 'id' is the PK
                 { key: 'tipo', label: 'Tipo' },
                 { key: 'material', label: 'Material' },
                 { key: 'caracteristica', label: 'Característica' },
                 { key: 'quantidade_2024', label: 'Qtd 2024', type: 'number', align: 'right' },
                 { key: 'valor_2024', label: 'Valor 2024', type: 'currency', align: 'right' },
                 { key: 'media_vl_unit_2024', label: 'Média Unit 2024', type: 'currency', align: 'right' },
+                { key: 'actions', label: 'Ações', sortable: false, align: 'center', render: (row) => renderActionButtons(row.id) } // Add Actions
              ],
              charts: ['2024']
         },
@@ -158,7 +181,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (row.material1_material) desc.push(`${row.material1_material} (${row.material1_caracteristica || ''}, ${row.material1_cor || ''})`);
                         if (row.material2_material) desc.push(`${row.material2_material} (${row.material2_caracteristica || ''}, ${row.material2_cor || ''})`);
                         if (row.material3_material) desc.push(`${row.material3_material} (${row.material3_caracteristica || ''}, ${row.material3_cor || ''})`);
-                        return desc.join(' + ');
+                        let combinedMaterials = desc.join(' + ');
+                        // Append notes (which contain the machine description) if they exist
+                        if (row.notas) {
+                            combinedMaterials += ". " + row.notas; 
+                        }
+                        return combinedMaterials;
                     }
                 },
                 { key: 'margem_percentual', label: 'Margem %', type: 'percentage', align: 'right' },
@@ -183,6 +211,211 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             ],
             charts: [] 
+        }
+    };
+
+    // --- Helper function to render standard action buttons ---
+    const renderActionButtons = (recordId) => {
+        return `
+            <button class="action-button edit-button" data-id="${recordId}" title="Editar Registo">
+                <i data-feather="edit"></i>
+            </button>
+            <button class="action-button delete-button" data-id="${recordId}" title="Eliminar Registo">
+                <i data-feather="trash-2"></i>
+            </button>
+        `;
+    };
+
+    // --- Functions for Generic Edit/Add Modal ---
+    const closeModal = () => {
+        if (modalOverlay) {
+            modalOverlay.style.display = 'none';
+            modalFormFields.innerHTML = ''; // Clear dynamic fields
+            modalForm.reset(); // Reset form values
+            if (modalStatus) modalStatus.textContent = ''; // Clear status message
+        }
+    };
+
+    const openModal = async (tableName, recordId = null) => {
+        if (!modalOverlay || !modalForm || !modalTitle || !modalFormFields || !modalRecordIdInput || !modalTableNameInput) {
+            console.error('Modal elements not found!');
+            alert('Erro ao abrir o formulário de edição.');
+            return;
+        }
+
+        const config = TABLE_CONFIG[tableName];
+        if (!config) {
+            console.error(`Configuration not found for table: ${tableName}`);
+            alert(`Erro: Configuração da tabela '${tableName}' não encontrada.`);
+            return;
+        }
+
+        // Reset form and status
+        modalForm.reset();
+        modalFormFields.innerHTML = '';
+        if (modalStatus) modalStatus.textContent = '';
+        modalTableNameInput.value = tableName;
+        modalRecordIdInput.value = recordId || '';
+
+        let recordData = {};
+        if (recordId) {
+            modalTitle.textContent = `Editar Registo (ID: ${recordId})`;
+            showLoading(); // Show loading indicator while fetching data
+            try {
+                // Fetch the specific record to edit
+                const { data, error } = await supabase
+                    .from(tableName)
+                    .select('*')
+                    .eq('id', recordId) // Assuming 'id' is the PK for these tables
+                    .single();
+                if (error) throw error;
+                recordData = data || {};
+            } catch (error) {
+                console.error(`Error fetching record ${recordId} from ${tableName}:`, error);
+                alert(`Erro ao carregar dados do registo: ${error.message}`);
+                hideLoading();
+                return;
+            } finally {
+                hideLoading();
+            }
+        } else {
+            modalTitle.textContent = `Adicionar Novo Registo a ${tableName}`;
+            recordData = {}; // Start with empty data for adding
+        }
+
+        // Dynamically generate form fields based on TABLE_CONFIG
+        config.columns.forEach(col => {
+            // Skip 'id' and 'actions' columns
+            if (col.key === 'id' || col.key === 'actions') return;
+
+            const inputGroup = document.createElement('div');
+            inputGroup.className = 'input-group';
+
+            const label = document.createElement('label');
+            label.htmlFor = `modal-field-${col.key}`;
+            label.textContent = col.label || col.key;
+
+            let inputElement;
+            // Basic input type determination (extend as needed)
+            if (col.type === 'number' || col.type === 'currency' || col.type === 'percentage') {
+                inputElement = document.createElement('input');
+                inputElement.type = 'number';
+                inputElement.step = 'any'; // Allow decimals for currency/percentage
+            } else {
+                inputElement = document.createElement('input');
+                inputElement.type = 'text';
+            }
+
+            inputElement.id = `modal-field-${col.key}`;
+            inputElement.name = col.key;
+            inputElement.value = recordData[col.key] !== null && recordData[col.key] !== undefined ? recordData[col.key] : '';
+
+            inputGroup.appendChild(label);
+            inputGroup.appendChild(inputElement);
+            modalFormFields.appendChild(inputGroup);
+        });
+
+        modalOverlay.style.display = 'flex'; // Show the modal
+        feather.replace(); // Ensure icons in modal are rendered (if any added later)
+    };
+    
+    const handleSaveGenericRecord = async (event) => {
+        event.preventDefault();
+        if (!modalForm || !modalSaveButton || !modalStatus) return;
+
+        const formData = new FormData(modalForm);
+        const recordData = Object.fromEntries(formData.entries());
+        const tableName = recordData.tableName;
+        const recordId = recordData.id || null; // Get ID from hidden field
+
+        // Remove helper fields from data to be saved
+        delete recordData.tableName;
+        delete recordData.id;
+        
+        const config = TABLE_CONFIG[tableName];
+        if (!config) {
+             console.error(`Save error: Config not found for table: ${tableName}`);
+             modalStatus.textContent = `Erro: Configuração da tabela '${tableName}' não encontrada.`;
+             modalStatus.style.color = NEGATIVE_COLOR;
+             return;
+        }
+
+        // --- Data Type Conversion --- 
+        // Convert number/currency/percentage fields from string back to number
+        config.columns.forEach(col => {
+             if (col.type === 'number' || col.type === 'currency' || col.type === 'percentage') {
+                 if (recordData[col.key] !== '' && recordData[col.key] !== null && recordData[col.key] !== undefined) {
+                     recordData[col.key] = parseFloat(recordData[col.key]);
+                 } else {
+                      // Handle empty numeric fields - set to null or default?
+                      recordData[col.key] = null; 
+                 }
+             }
+        });
+        // ---------------------------
+
+        console.log(`[Save] Attempting to save to ${tableName}. ID: ${recordId || 'New'}, Data:`, recordData);
+        modalSaveButton.disabled = true;
+        modalSaveButton.textContent = 'Guardando...';
+        modalStatus.textContent = 'Guardando...';
+        modalStatus.style.color = TEXT_SECONDARY_COLOR;
+
+        try {
+            let savedData, error;
+            if (recordId) { // Update existing record
+                // --- DETAILED LOGGING FOR UPDATE --- 
+                console.log('[Save][Update] Starting update process.');
+                console.log('[Save][Update] recordId from hidden input:', recordId);
+                console.log('[Save][Update] tableName from hidden input:', tableName);
+                // Log the data *before* potential modifications (like type conversion)
+                console.log('[Save][Update] Raw recordData from form:', JSON.stringify(recordData)); 
+                // Ensure id and tableName are removed *before* the update payload is logged/sent
+                const idForEq = recordId; // Store the ID for the .eq() clause
+                delete recordData.tableName; 
+                delete recordData.id; 
+                console.log('[Save][Update] recordData after deleting tableName and id:', JSON.stringify(recordData));
+                // --- END LOGGING ---
+
+                ({ data: savedData, error } = await supabase
+                    .from(tableName)
+                    .update(recordData) // Send data without id/tableName
+                    .eq('id', idForEq)  // Target the correct row using the stored ID
+                    .select()
+                    .single());
+            } else { // Insert new record
+                const recordToInsert = { ...recordData }; // Create a copy
+                // Ensure ID is not in the object sent for insertion
+                delete recordToInsert.id; 
+                
+                // Log the exact payload being sent for insert
+                console.log('[Save] Inserting new record to:', tableName, 'Data:', JSON.stringify(recordToInsert));
+                
+                ({ data: savedData, error } = await supabase
+                    .from(tableName)
+                    .insert([recordToInsert]) // Use the copy without id
+                    .select()
+                    .single());
+            }
+
+            if (error) throw error;
+
+            console.log('[Save] Success:', savedData);
+            modalStatus.textContent = 'Registo guardado com sucesso!';
+            modalStatus.style.color = POSITIVE_COLOR;
+
+            // Refresh table data and close modal after a short delay
+            delete tableDataCache[tableName];
+            await fetchData(tableName);
+            filterDataAndRender(tableName);
+            setTimeout(closeModal, 1500); // Close after 1.5 seconds
+
+        } catch (error) {
+            console.error('[Save] Error:', error);
+            modalStatus.textContent = `Erro ao guardar: ${error.message}`;
+            modalStatus.style.color = NEGATIVE_COLOR;
+        } finally {
+            modalSaveButton.disabled = false;
+            modalSaveButton.textContent = 'Guardar';
         }
     };
 
@@ -807,9 +1040,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Cache calculator elements ---
-        const prevButton = document.getElementById('prev-record');
-        const nextButton = document.getElementById('next-record');
-        const recordIndicator = document.getElementById('record-indicator');
+        const prevButton = document.getElementById('prev-record'); // REMOVED
+        const nextButton = document.getElementById('next-record'); // REMOVED
+        const recordIndicator = document.getElementById('record-indicator'); // REMOVED
         const clearMaterialButtons = document.querySelectorAll('#calculadora-section .clear-button[data-material-num]');
         const clearMachineButton = document.getElementById('clear-machine');
         const searchInput = document.getElementById('search-calc-id');
@@ -823,6 +1056,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         const machineSelect = document.getElementById('machine-select');
         const machinePrice = document.getElementById('machine-price');
+        const machine4x4Checkbox = document.getElementById('machine-4x4-checkbox'); // Add reference to checkbox
         const marginInput = document.getElementById('margin-input');
         const currentPriceInput = document.getElementById('current-price-input');
         const totalMaterialsCostEl = document.getElementById('total-materials-cost');
@@ -840,13 +1074,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     2: { tipo: '', material: '', caracteristica: '', cor: '', price: 0, id: null },
                     3: { tipo: '', material: '', caracteristica: '', cor: '', price: 0, id: null }
                 },
-                machine: { id: null, nome: '', price: 0 },
+                machine: { id: null, nome: '', price: 0, originalPrice: 0 }, // Add originalPrice
                 area: 1, margin: 0, currentPrice: 0, notes: ''
             };
         }
         resetCalculatorState(); // Initialize state
         
-        let currentCalcRecordIndex = -1;
+        let currentCalcRecordIndex = -1; // Still needed to track if editing or new
 
         // --- Calculator helper functions (defined within initializeCalculator scope) ---
         const initializeDropdowns = async () => {
@@ -872,15 +1106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // --- Record Navigation Functions ---
-        const updateCalcNavigation = () => {
-             if (!recordIndicator || !prevButton || !nextButton) return;
-             const totalRecords = allCalculations.length;
-             recordIndicator.textContent = totalRecords === 0 ? 'Nenhum cálculo' : (currentCalcRecordIndex === -1 ? `Novo / ${totalRecords}` : `${currentCalcRecordIndex + 1} / ${totalRecords}`);
-             prevButton.disabled = currentCalcRecordIndex <= 0;
-             nextButton.disabled = currentCalcRecordIndex === -1 ? totalRecords === 0 : currentCalcRecordIndex >= totalRecords - 1;
-             searchInput.value = currentCalcRecordIndex >= 0 ? allCalculations[currentCalcRecordIndex].calculation_id : '';
-             feather.replace();
-        };
+        // const updateCalcNavigation = () => { ... }; // REMOVED ENTIRE FUNCTION
         
         const loadCalcRecord = async (index) => {
             if (index < 0 || index >= allCalculations.length) {
@@ -935,7 +1161,9 @@ document.addEventListener('DOMContentLoaded', () => {
             marginInput.value = record.margem_percentual || 0;
             currentPriceInput.value = record.preco_atual ? String(record.preco_atual).replace('.', ',') : '';
             if (notesTextarea) { notesTextarea.value = record.notas || ''; }
-            updateCalculations(); updateCalcNavigation(); console.log('[Calculator] Record loaded.');
+            updateCalculations(); 
+            // updateCalcNavigation(); // REMOVED Call
+            console.log('[Calculator] Record loaded.');
         };
 
         // --- Clear Functions ---
@@ -951,10 +1179,11 @@ document.addEventListener('DOMContentLoaded', () => {
          };
          const clearMachineSection = (triggerCalcUpdate = true) => {
              machineSelect.value = ''; machinePrice.textContent = '0.00€';
-             calculatorState.machine = { id: null, nome: '', price: 0 };
+             machine4x4Checkbox.checked = false; // Uncheck the checkbox
+             calculatorState.machine = { id: null, nome: '', price: 0, originalPrice: 0 }; // Reset originalPrice
              if (triggerCalcUpdate) updateCalculations();
          };
-         const clearForm = (updateNav = true) => {
+         const clearForm = (updateNav = true) => { // updateNav parameter no longer needed but harmless
              console.log('[Calculator] Clearing form.');
              clearMaterialSection(1, false); clearMaterialSection(2, false); clearMaterialSection(3, false);
              clearMachineSection(false);
@@ -962,8 +1191,10 @@ document.addEventListener('DOMContentLoaded', () => {
              if (notesTextarea) notesTextarea.value = '';
              resetCalculatorState(); // Reset the state object fully
              currentCalcRecordIndex = -1;
-             if (updateNav) updateCalcNavigation();
+             // if (updateNav) updateCalcNavigation(); // REMOVED Call
              updateCalculations(); // Update display based on cleared state
+             // Clear search input when clearing form for a new calculation
+             searchInput.value = ''; 
          };
 
         // --- Data Handling ---
@@ -1025,27 +1256,66 @@ document.addEventListener('DOMContentLoaded', () => {
                  try {
                      const { data, error } = await supabase.from('maquinas').select('maquina, valor_m2').eq('id', machineId).single();
                      if (error) throw error;
-                     calculatorState.machine = { id: machineId, nome: data.maquina, price: data.valor_m2 || 0 };
-                     machinePrice.textContent = `${calculatorState.machine.price.toFixed(2)}€`;
+                     const originalPrice = data.valor_m2 || 0;
+                     const multiplier = machine4x4Checkbox.checked ? 2 : 1; // Check checkbox state
+                     const effectivePrice = originalPrice * multiplier; // Calculate effective price
+                     calculatorState.machine = { id: machineId, nome: data.maquina, price: effectivePrice, originalPrice: originalPrice }; // Store both prices
+                     machinePrice.textContent = `${effectivePrice.toFixed(2)}€`; // Display effective price
                  } catch (error) { console.error('Error fetching machine price:', error); clearMachineSection(false); }
-             } else { clearMachineSection(false); }
-             if (triggerCalcUpdate) updateCalculations();
+             } else { clearMachineSection(false); } // Clear section calls updateCalculations if triggerCalcUpdate is true
+             // Ensure updateCalculations is called if needed, respecting triggerCalcUpdate
+             if (triggerCalcUpdate) updateCalculations(); 
          };
 
         // --- Calculation Update ---
         const updateCalculations = () => {
-             const margin = Number(marginInput.value) || 0; const currentPrice = parseFloat(currentPriceInput.value.replace(',', '.')) || 0;
-             calculatorState.margin = margin; calculatorState.currentPrice = currentPrice; calculatorState.notes = notesTextarea?.value || '';
+             // Store notes and margin/current price from inputs
+             calculatorState.notes = notesTextarea?.value || '';
+             const margin = Number(marginInput.value) || 0;
+             const currentPrice = parseFloat(currentPriceInput.value.replace(',', '.')) || 0;
+             calculatorState.margin = margin;
+             calculatorState.currentPrice = currentPrice;
+
+             // Calculate costs based on state
              const materialsCostPerM2 = Object.values(calculatorState.materials).reduce((sum, mat) => sum + (Number(mat.price) || 0), 0);
-             const area = 1; calculatorState.area = area;
+             const area = 1; // Assuming area is always 1 for now
+             calculatorState.area = area;
+
+             // Machine cost already reflects the 4/4 doubling if applicable, as it's stored in calculatorState.machine.price
              const totalMaterialsCostValue = materialsCostPerM2 * area;
-             const machineCostValue = (Number(calculatorState.machine.price) || 0) * area;
+             const machineCostValue = (Number(calculatorState.machine.price) || 0) * area; // Use the (potentially doubled) price from state
              const netCostValue = totalMaterialsCostValue + machineCostValue;
              const finalPriceValue = netCostValue * (1 + margin / 100);
-             totalMaterialsCostEl.textContent = `${totalMaterialsCostValue.toFixed(2)}€`; totalMachineCostEl.textContent = `${machineCostValue.toFixed(2)}€`; totalNetCostEl.textContent = `${netCostValue.toFixed(2)}€`; finalPriceEl.textContent = `${finalPriceValue.toFixed(2)}€`;
-             if (currentPrice > 0) { const diff = ((finalPriceValue - currentPrice) / currentPrice) * 100; priceDifferenceEl.textContent = `${diff.toFixed(2)}%`; priceDifferenceEl.className = `price-value-box ${diff > 0 ? 'positive-change' : diff < 0 ? 'negative-change' : ''}`; } 
-             else { priceDifferenceEl.textContent = '0%'; priceDifferenceEl.className = 'price-value-box'; }
+
+             // Update UI elements
+             totalMaterialsCostEl.textContent = `${totalMaterialsCostValue.toFixed(2)}€`;
+             totalMachineCostEl.textContent = `${machineCostValue.toFixed(2)}€`; // Display the (potentially doubled) machine cost
+             totalNetCostEl.textContent = `${netCostValue.toFixed(2)}€`;
+             finalPriceEl.textContent = `${finalPriceValue.toFixed(2)}€`;
+
+             // Update price difference display
+             if (currentPrice > 0) {
+                 const diff = ((finalPriceValue - currentPrice) / currentPrice) * 100;
+                 priceDifferenceEl.textContent = `${diff.toFixed(2)}%`;
+                 priceDifferenceEl.className = `price-value-box ${diff > 0 ? 'positive-change' : diff < 0 ? 'negative-change' : ''}`;
+             } else {
+                 priceDifferenceEl.textContent = '0%';
+                 priceDifferenceEl.className = 'price-value-box';
+             }
          };
+
+        // --- Event Listeners ---
+        // Add listener for the 4x4 checkbox
+        machine4x4Checkbox.addEventListener('change', () => {
+            const originalPrice = calculatorState.machine.originalPrice || 0;
+            const multiplier = machine4x4Checkbox.checked ? 2 : 1;
+            const effectivePrice = originalPrice * multiplier;
+
+            calculatorState.machine.price = effectivePrice; // Update state price
+            machinePrice.textContent = `${effectivePrice.toFixed(2)}€`; // Update display price
+
+            updateCalculations(); // Recalculate totals
+        });
 
         // --- Save Calculation ---
         const saveCalculation = async () => {
@@ -1056,8 +1326,37 @@ document.addEventListener('DOMContentLoaded', () => {
                      material2_id: calculatorState.materials[2].id || null, material2_tipo: calculatorState.materials[2].tipo || null, material2_material: calculatorState.materials[2].material || null, material2_caracteristica: calculatorState.materials[2].caracteristica || null, material2_cor: calculatorState.materials[2].cor || null, material2_valor_m2: calculatorState.materials[2].price || null,
                      material3_id: calculatorState.materials[3].id || null, material3_tipo: calculatorState.materials[3].tipo || null, material3_material: calculatorState.materials[3].material || null, material3_caracteristica: calculatorState.materials[3].caracteristica || null, material3_cor: calculatorState.materials[3].cor || null, material3_valor_m2: calculatorState.materials[3].price || null,
                      maquina_id: calculatorState.machine.id, maquina_nome: calculatorState.machine.nome, maquina_valor_m2: calculatorState.machine.price,
-                     metros_quadrados: calculatorState.area, margem_percentual: calculatorState.margin, preco_atual: calculatorState.currentPrice || null, notas: calculatorState.notes || null
+                     metros_quadrados: calculatorState.area, margem_percentual: calculatorState.margin, preco_atual: calculatorState.currentPrice || null, notas: calculatorState.notes || '' // Ensure notas is at least an empty string
                  };
+
+                // --- Append machine details to notes ---
+                let machineNoteString = '';
+                const machineName = calculatorState.machine.nome;
+                const is4x4 = machine4x4Checkbox.checked;
+
+                if (machineName === 'Sem impressão') {
+                    machineNoteString = 'Sem Impressão';
+                } else if (machineName === 'Mimaki') {
+                    machineNoteString = is4x4 ? '4/4 cores solvente' : '4/0 cores solvente';
+                } else if (machineName === 'Mimaki Branco') {
+                    machineNoteString = '4+Branco cores UV';
+                } else if (machineName === 'Inca' || machineName === 'Fuji') {
+                    machineNoteString = is4x4 ? '4/4 cores UV' : '4/0 cores UV';
+                }
+
+                if (machineNoteString) {
+                    if (calculationData.notas) { // Check if notes already has content
+                        calculationData.notas += ", " + machineNoteString;
+                    } else {
+                        calculationData.notas = machineNoteString;
+                    }
+                }
+                // Ensure notes is null if it ended up empty after logic
+                if (!calculationData.notas) {
+                    calculationData.notas = null;
+                }
+                // --- End Append --- 
+
                  saveButton.disabled = true; saveButton.textContent = 'Guardando...';
                  let existingRecordId = (currentCalcRecordIndex !== -1 && allCalculations[currentCalcRecordIndex]) ? allCalculations[currentCalcRecordIndex].calculation_id : null;
                  let savedData, error;
@@ -1067,7 +1366,15 @@ document.addEventListener('DOMContentLoaded', () => {
                  console.log('Calculation saved:', savedData); alert('Cálculo guardado!');
                  await fetchAllCalculations();
                  const savedIndex = allCalculations.findIndex(c => c.calculation_id === savedData.calculation_id);
-                 if (savedIndex !== -1) { loadCalcRecord(savedIndex); } else { clearForm(); }
+                 if (savedIndex !== -1) { 
+                     // Instead of loading, just update the index if we were editing
+                     currentCalcRecordIndex = savedIndex;
+                     // Maybe update search input with ID?
+                     searchInput.value = savedData.calculation_id;
+                 } else { 
+                     // If it was a new record, clear form to indicate readiness for another new one
+                     clearForm(); 
+                 }
              } catch (error) { console.error('Error saving calc:', error); alert(`Erro ao guardar: ${error.message}`); }
              finally { saveButton.disabled = false; saveButton.textContent = 'Guardar Cálculo'; feather.replace(); }
          };
@@ -1081,15 +1388,7 @@ document.addEventListener('DOMContentLoaded', () => {
          };
 
         // --- Event Listeners Setup ---
-        prevButton.addEventListener('click', () => {
-             if (currentCalcRecordIndex > 0) { loadCalcRecord(currentCalcRecordIndex - 1); } 
-             else if (currentCalcRecordIndex <= 0) { if (allCalculations.length > 0) loadCalcRecord(allCalculations.length - 1); else clearForm(); }
-        });
-        nextButton.addEventListener('click', () => {
-             if (currentCalcRecordIndex === -1) { if (allCalculations.length > 0) loadCalcRecord(0); }
-             else if (currentCalcRecordIndex < allCalculations.length - 1) { loadCalcRecord(currentCalcRecordIndex + 1); }
-             else { clearForm(); }
-        });
+        // nextButton.addEventListener('click', () => { ... }); // REMOVED LISTENER
          clearMaterialButtons.forEach(button => { button.addEventListener('click', () => { clearMaterialSection(parseInt(button.dataset.materialNum)); }); });
          clearMachineButton.addEventListener('click', () => clearMachineSection());
          searchButton.addEventListener('click', handleSearch);
@@ -1108,11 +1407,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Initial Load for Calculator ---
         initializeDropdowns().then(() => {
-            fetchAllCalculations().catch(err => {
-                console.error("Initial fetch for calculator failed:", err);
+            fetchAllCalculations().then(() => {
+                // Success: Default to the "Novo" state now
+                console.log('[Calculator] Starting in Novo state.');
+                clearForm(true); // Start in Novo state
+            }).catch(err => {
+                // Error fetching:
+                console.error("[Calculator] Initial fetch failed:", err);
                 alert('Falha ao carregar cálculos iniciais.');
-            }).finally(() => {
-                 updateCalcNavigation(); 
+                clearForm(true); // Clear form on error
             });
         });
 
@@ -1121,8 +1424,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Add event listener for new calculation button
         document.getElementById('new-calculation').addEventListener('click', () => {
-            clearForm(false);
-            document.getElementById('record-indicator').textContent = 'Novo Cálculo';
+            clearForm(true); // Still needed to reset the form explicitly
         });
 
         // Expose calculator functions globally through calculatorApp
@@ -1370,20 +1672,26 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         sectionElement.classList.add('active-section');
-        Object.keys(chartInstances).forEach(destroyChart);
+        // Keep chart destruction
+        // Object.keys(chartInstances).forEach(destroyChart);
 
         try {
             if (targetSection === 'maquinas') {
-                await initializeMaquinasSection(); 
-            } else if (targetSection === 'calculadora') {
-                if (!sectionElement.classList.contains('calculator-initialized')) {
-                    initializeCalculator(); 
-                } else {
-                    console.log('Calculator already initialized. Ensuring data is fresh.');
-                    await fetchAllCalculations();
-                    updateCalcNavigation();
+                // Always refresh maquinas data on switch
+                await initializeMaquinasSection(); // Initializes if needed
+                if (sectionElement.classList.contains('maquinas-initialized')) {
+                     await populateMaquinaSelectAndFetchAll(); // Explicitly refresh if already initialized
                 }
-            } else {
+            } else if (targetSection === 'calculadora') {
+                // Always refresh calculator data on switch
+                if (!sectionElement.classList.contains('calculator-initialized')) {
+                    initializeCalculator(); // Initializes if needed (calls fetchAllCalculations internally)
+                } else {
+                    console.log('Calculator already initialized. Refreshing data...');
+                    await fetchAllCalculations(); // Explicitly refresh if already initialized
+                    // updateCalcNavigation(); // REMOVED Call - Function no longer exists
+                }
+            } else { // Standard tables (including tabela_precos)
                  const config = TABLE_CONFIG[targetSection];
                  if (!config) {
                      console.error(`Config not found for standard section: ${targetSection}`); 
@@ -1391,39 +1699,47 @@ document.addEventListener('DOMContentLoaded', () => {
                      return; 
                  }
                  
-                 const data = tableDataCache[targetSection] || await fetchData(targetSection);
+                 // --- Force data refresh by clearing cache --- 
+                 console.log(`[switchSection] Clearing cache for ${targetSection} to force refresh.`);
+                 delete tableDataCache[targetSection]; 
+                 // -------------------------------------------
+
+                 const data = await fetchData(targetSection); // fetchData will now always go to DB
                  
                  if (data) {
-                     tableDataCache[targetSection] = data;
+                     tableDataCache[targetSection] = data; // Re-cache the fresh data
                      
                      const currentFilterValue = filterState[targetSection]?.material || 'all';
                      
+                     // Setup filters only if the table has a material column and a filter element exists
                      const hasMaterialColumn = config.columns.some(col => col.key === 'material');
-                     if (hasMaterialColumn) {
-                         setupFilters(targetSection, data);
-                         const filterSelect = document.getElementById(`${targetSection}-filter`);
-                         if (filterSelect) filterSelect.value = currentFilterValue;
+                     const filterSelect = document.getElementById(`${targetSection}-filter`);
+                     if (hasMaterialColumn && filterSelect) {
+                         setupFilters(targetSection, data); // Setup dropdown options based on fresh data
+                         filterSelect.value = currentFilterValue; // Re-apply existing filter selection if possible
                      }
                      
-                     applyFilter(targetSection, currentFilterValue); 
+                     // Re-apply filter/sort/render with the fresh data
+                     filterDataAndRender(targetSection); // Use the function that handles filter/search/render
                      updateSortIndicators(targetSection);
                      
                  } else {
-                     console.error(`Failed data load or no data for ${targetSection}.`);
-                     const tableBody = document.querySelector(`#${targetSection}-table tbody`); 
-                     if (tableBody) { 
-                         const colspan = config.columns.length || 1;
-                         tableBody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center; color: ${NEGATIVE_COLOR};">Erro ao carregar dados.</td></tr>`;
-                     } else {
-                         console.error(`Table body not found for section ${targetSection} to display error.`);
-                     }
-                     // Destroy any lingering charts for this section
-                     if (config.charts) config.charts.forEach(type => destroyChart(`${targetSection}-chart-${type}`));
+                      console.error(`Failed data load or no data for ${targetSection}.`);
+                      const tableBody = document.querySelector(`#${targetSection}-table tbody`); 
+                      if (tableBody) { 
+                          const colspan = config.columns.length || 1;
+                          tableBody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center; color: ${NEGATIVE_COLOR};">Erro ao carregar dados.</td></tr>`;
+                      } else {
+                          console.error(`Table body not found for section ${targetSection} to display error.`);
+                      }
+                      // Destroy any lingering charts for this section if data fails
+                      if (config.charts) config.charts.forEach(type => destroyChart(`${targetSection}-chart-${type}`));
                  }
             }
         } catch (error) {
              console.error(`Error loading section ${targetSection}:`, error);
              // Optionally display a general error message to the user
+             alert(`Ocorreu um erro ao carregar a seção ${targetSection}. Tente novamente.`);
         } finally {
             hideLoading(); 
         }
@@ -1464,12 +1780,28 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Action button is missing data-id');
             return;
         }
-        const calculationId = parseInt(id);
+        
+        // Determine the table name from the button's context
+        const tableElement = button.closest('table');
+        if (!tableElement || !tableElement.id) {
+            console.error('Could not determine table from action button.');
+            return;
+        }
+        const tableName = tableElement.id.replace('-table', '');
+        const recordId = parseInt(id); // Or keep as string if PK is not integer
 
         if (button.classList.contains('edit-button')) {
-            handleEditCalculation(calculationId);
+            if (tableName === 'tabela_precos') {
+                handleEditCalculation(recordId); // Keep specific handler for calculator
+            } else {
+                openModal(tableName, recordId); // Call openModal for generic edits
+            }
         } else if (button.classList.contains('delete-button')) {
-            handleDeleteCalculation(calculationId);
+            if (tableName === 'tabela_precos') {
+                handleDeleteRecord('calculadora_materiais', recordId); // Use DB table name
+            } else {
+                 handleDeleteRecord(tableName, recordId);
+            }
         }
     };
 
@@ -1507,79 +1839,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- Function to handle Deleting a Calculation ---
-    const handleDeleteCalculation = async (calculationId) => {
-        console.log(`[Delete] Request to delete calculation ID: ${calculationId}`);
-        if (confirm(`Tem a certeza que deseja eliminar o cálculo com ID ${calculationId}? Esta ação não pode ser desfeita.`)) {
-            console.log(`[Delete] Confirmed deletion for ID: ${calculationId}`);
+    // --- Function to handle Deleting a Generic Record --- 
+    const handleDeleteRecord = async (tableName, recordId) => {
+        console.log(`[Delete] Request to delete record ID: ${recordId} from table: ${tableName}`);
+        if (!tableName || !recordId) {
+             console.error('[Delete] Table name or Record ID missing.');
+             alert('Erro: Não foi possível identificar o registo a eliminar.');
+             return;
+        }
+
+        // Use calculation_id for tabela_precos, otherwise assume 'id'
+        const idColumn = tableName === 'tabela_precos' ? 'calculation_id' : 'id';
+
+        if (confirm(`Tem a certeza que deseja eliminar o registo com ID ${recordId} da tabela ${tableName}? Esta ação não pode ser desfeita.`)) {
+            console.log(`[Delete] Confirmed deletion for ID: ${recordId} from ${tableName}`);
             showLoading();
             try {
                 const { error } = await supabase
-                    .from('calculadora_materiais')
+                    .from(tableName) // Use the actual table name
                     .delete()
-                    .eq('calculation_id', calculationId);
+                    .eq(idColumn, recordId);
 
-                if (error) {
-                    throw error;
+                if (error) throw error;
+
+                console.log(`[Delete] Successfully deleted record ID: ${recordId} from ${tableName}`);
+                alert('Registo eliminado com sucesso!');
+
+                // Refresh the data for the current table
+                delete tableDataCache[tableName]; // Clear cache for this table
+                await fetchData(tableName); // Fetch fresh data
+                filterDataAndRender(tableName); // Re-render with fresh data
+
+                // Special case: if deleting from calculadora_materiais, also refresh calculator internal state
+                if (tableName === 'calculadora_materiais') {
+                     await fetchAllCalculations();
                 }
-
-                console.log(`[Delete] Successfully deleted calculation ID: ${calculationId}`);
-                alert('Cálculo eliminado com sucesso!');
-
-                // --- Modification Start ---
-                // Find the index of the deleted item in the cache
-                const activeTable = document.querySelector('.data-section.active-section')?.id?.replace('-section', '');
-                let itemRemovedFromCache = false;
-
-                if (activeTable === 'tabela_precos' && tableDataCache['tabela_precos']) {
-                    const indexToRemove = tableDataCache['tabela_precos'].findIndex(item => item.calculation_id === calculationId);
-                    
-                    if (indexToRemove !== -1) {
-                        // Remove the item from the cached array
-                        tableDataCache['tabela_precos'].splice(indexToRemove, 1);
-                        itemRemovedFromCache = true;
-                        console.log(`[Delete] Removed item with ID ${calculationId} from tableDataCache['tabela_precos']`);
-                        
-                        // Re-render the table with the modified cache
-                        renderTable('tabela_precos', tableDataCache['tabela_precos']);
-                    } else {
-                         console.warn(`[Delete] Item with ID ${calculationId} not found in tableDataCache['tabela_precos'] after deletion.`);
-                         // Optional: Force refetch if item not found in cache (fallback)
-                         delete tableDataCache['tabela_precos']; 
-                         await fetchData('tabela_precos');
-                         if (tableDataCache['tabela_precos']) {
-                            renderTable('tabela_precos', tableDataCache['tabela_precos']);
-                         } else {
-                            renderTable('tabela_precos', []);
-                         }
-                    }
-                } else if (activeTable === 'tabela_precos') {
-                     // Cache was empty or table not active, attempt refetch just in case
-                     console.log(`[Delete] Cache for 'tabela_precos' was initially empty or section not active. Refetching.`);
-                     delete tableDataCache['tabela_precos']; 
-                     await fetchData('tabela_precos');
-                      if (tableDataCache['tabela_precos']) {
-                        renderTable('tabela_precos', tableDataCache['tabela_precos']);
-                     } else {
-                        renderTable('tabela_precos', []);
-                     }
-                }
-                // --- Modification End ---
-
-
-                // Also refresh the calculator's data in the background (keep this)
-                await fetchAllCalculations(); 
 
             } catch (error) {
-                console.error(`[Delete] Error deleting calculation ID ${calculationId}:`, error);
-                alert(`Erro ao eliminar o cálculo: ${error.message}`);
+                console.error(`[Delete] Error deleting record ID ${recordId} from ${tableName}:`, error);
+                alert(`Erro ao eliminar o registo: ${error.message}`);
             } finally {
                 hideLoading();
             }
         } else {
-            console.log(`[Delete] Deletion cancelled for ID: ${calculationId}`);
+            console.log(`[Delete] Deletion cancelled for ID: ${recordId} from ${tableName}`);
         }
     };
+
+    // --- Function to handle Deleting a Calculation (OBSOLETE - Use handleDeleteRecord now) ---
+    // const handleDeleteCalculation = async (calculationId) => { ... };
 
     // ---> Move fetchAllCalculations function definition here <----
     const fetchAllCalculations = async () => {
@@ -1641,6 +1949,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tableFilteredData[tableName] = filteredData; // Update filtered cache
         renderTable(tableName, filteredData);
+        renderCharts(tableName, filteredData); // Ensure charts are rendered after filtering/sorting
     };
 
     // --- Event Listeners ---
@@ -1690,20 +1999,86 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainContent = document.querySelector('main.content');
     if (mainContent) {
         mainContent.addEventListener('click', handleTableActions);
+
+        // Add listener for the new Add buttons (delegated)
+        mainContent.addEventListener('click', (event) => {
+            const button = event.target.closest('.add-new-button');
+            if (button) {
+                 const tableName = button.dataset.table;
+                 if (tableName) {
+                     openModal(tableName); // Open modal for adding
+                 } else {
+                     console.warn('Add new button missing data-table attribute');
+                 }
+            }
+        });
     } else {
         console.error("Could not find main content area to attach table action listener.");
     }
 
+    // Add Modal Event Listeners
+    if (modalCloseButton) modalCloseButton.addEventListener('click', closeModal);
+    if (modalCancelButton) modalCancelButton.addEventListener('click', closeModal);
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', (event) => {
+            // Close if clicked directly on the overlay, not the content
+            if (event.target === modalOverlay) {
+                closeModal();
+            }
+        });
+    }
+    if (modalForm) modalForm.addEventListener('submit', handleSaveGenericRecord);
 
     // Ordenação das Tabelas
     document.addEventListener('click', (event) => {
         const target = event.target;
         if (target.classList.contains('sort-indicator')) {
             const column = target.closest('th').dataset.column;
-            //const direction = target.classList.contains('asc') ? 'asc' : 'desc'; // Direction logic handled in handleSort
-            handleSort(target.closest('table').id.replace('-table',''), column); // Pass table name and column
+            handleSort(target.closest('table').id.replace('-table',''), column);
         }
-        // Note: Moved action button handling to the specific listener above
     });
+
+    // --- Functions for Generic Edit/Add Modal ---  <- REMOVE FROM HERE
+    /* 
+    const closeModal = () => { ... };
+
+    const openModal = async (tableName, recordId = null) => { ... };
+    
+    const handleSaveGenericRecord = async (event) => { ... };
+    */ // <- TO HERE
+
+    // --- Test Function for Minimal Insert ---
+    async function testInsert() {
+      console.log('[TestInsert] Running test for \'cola\' table...');
+      try {
+        // Create a minimal record with only required fields
+        const testRecord = {
+          // Add the minimum required fields for your cola table
+          // For example:
+          tipo: 'Test Tipo',
+          material: 'Test Material'
+          // Do NOT include id
+        };
+        
+        console.log('[TestInsert] Inserting record:', testRecord);
+        const { data, error } = await supabase
+          .from('cola')
+          .insert([testRecord])
+          .select(); // Add .select() to see what gets returned
+          
+        if (error) {
+            console.error('[TestInsert] Insert error object:', error);
+        } else {
+            console.log('[TestInsert] Insert success. Result data:', data);
+        }
+      } catch (e) {
+        console.error('[TestInsert] Test insert caught exception:', e);
+      }
+    }
+    // You can call testInsert() from the console or temporarily attach it to a button for testing
+    window.testInsert = testInsert; // Make it callable from console
+
+    // --- Event Listener Setup ---
+    // ... (event listeners for modal, sidebar, etc.) ...
 
 }); // Fim do DOMContentLoaded
