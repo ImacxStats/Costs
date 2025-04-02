@@ -77,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let sortState = {}; // Armazena estado de ordenação por tabela { tableName: { column: 'col_name', direction: 'asc' | 'desc' } }
     let filterState = {}; // Armazena estado de filtro por tabela { tableName: { material: 'value' } }
     let allCalculations = [];
+    let initializedSections = {}; // Track which sections have been initialized
     // Add state for search term
     let searchState = {}; // Armazena estado de busca por tabela { tableName: { term: 'value' } }
 
@@ -199,11 +200,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     align: 'center', 
                     sortable: false, // Actions column is not sortable
                     render: (row) => {
+                        // Edit button now links to calculator with the calculation_id
                         return `
-                            <button class="action-button edit-button" data-id="${row.calculation_id}" title="Editar Cálculo">
+                            <button class="action-button edit-button" data-uuid="${row.id}" data-calc-id="${row.calculation_id}" title="Editar Cálculo">
                                 <i data-feather="edit"></i>
                             </button>
-                            <button class="action-button delete-button" data-id="${row.calculation_id}" title="Eliminar Cálculo">
+                            <button class="action-button delete-button" data-uuid="${row.id}" data-calc-id="${row.calculation_id}" title="Eliminar Cálculo">
                                 <i data-feather="trash-2"></i>
                             </button>
                         `;
@@ -217,10 +219,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Helper function to render standard action buttons ---
     const renderActionButtons = (recordId) => {
         return `
-            <button class="action-button edit-button" data-id="${recordId}" title="Editar Registo">
+            <button class="action-button edit-button" data-uuid="${recordId}" title="Editar Registo">
                 <i data-feather="edit"></i>
             </button>
-            <button class="action-button delete-button" data-id="${recordId}" title="Eliminar Registo">
+            <button class="action-button delete-button" data-uuid="${recordId}" title="Eliminar Registo">
                 <i data-feather="trash-2"></i>
             </button>
         `;
@@ -737,9 +739,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Re-initialize Feather Icons for the newly added buttons
         feather.replace(); 
 
-        // Add event listener for action buttons (using delegation)
-        tableBody.removeEventListener('click', handleTableActions); // Remove previous listener if any
-        tableBody.addEventListener('click', handleTableActions); 
+        // Remove the redundant event listener attachment
+        // tableBody.removeEventListener('click', handleTableActions); // Remove previous listener if any
+        // tableBody.addEventListener('click', handleTableActions); 
     };
 
      const handleSort = (tableName, columnKey) => {
@@ -1030,43 +1032,17 @@ document.addEventListener('DOMContentLoaded', () => {
          //console.log(`Charts rendered for ${tableName}`);
     };
 
-    // --- Funções Específicas da Calculadora ---
-    const initializeCalculator = () => {
-        console.log('[Calculator] Initializing...');
-        const sectionElement = document.getElementById('calculadora-section');
-        if (sectionElement.classList.contains('calculator-initialized')) {
-            console.log('[Calculator] Already initialized.');
-            return;
-        }
-
-        // --- Cache calculator elements ---
-        const prevButton = document.getElementById('prev-record'); // REMOVED
-        const nextButton = document.getElementById('next-record'); // REMOVED
-        const recordIndicator = document.getElementById('record-indicator'); // REMOVED
-        const clearMaterialButtons = document.querySelectorAll('#calculadora-section .clear-button[data-material-num]');
-        const clearMachineButton = document.getElementById('clear-machine');
-        const searchInput = document.getElementById('search-calc-id');
-        const searchButton = document.getElementById('search-button');
-        const saveButton = document.getElementById('save-calculation');
-        const notesTextarea = document.querySelector('#calculadora-section textarea[name="notes"]');
-        const materialSelectors = {
-            1: { tipo: document.getElementById('material1-tipo'), material: document.getElementById('material1-material'), caracteristica: document.getElementById('material1-caracteristica'), cor: document.getElementById('material1-cor'), price: document.getElementById('material1-price') },
-            2: { tipo: document.getElementById('material2-tipo'), material: document.getElementById('material2-material'), caracteristica: document.getElementById('material2-caracteristica'), cor: document.getElementById('material2-cor'), price: document.getElementById('material2-price') },
-            3: { tipo: document.getElementById('material3-tipo'), material: document.getElementById('material3-material'), caracteristica: document.getElementById('material3-caracteristica'), cor: document.getElementById('material3-cor'), price: document.getElementById('material3-price') }
-        };
-        const machineSelect = document.getElementById('machine-select');
-        const machinePrice = document.getElementById('machine-price');
-        const machine4x4Checkbox = document.getElementById('machine-4x4-checkbox'); // Add reference to checkbox
-        const marginInput = document.getElementById('margin-input');
-        const currentPriceInput = document.getElementById('current-price-input');
-        const totalMaterialsCostEl = document.getElementById('total-materials-cost');
-        const totalMachineCostEl = document.getElementById('total-machine-cost');
-        const totalNetCostEl = document.getElementById('total-net-cost');
-        const finalPriceEl = document.getElementById('final-price');
-        const priceDifferenceEl = document.getElementById('price-difference');
-
-        // --- Calculator state ---
-        let calculatorState = { materials: { 1: {}, 2: {}, 3: {} }, machine: {}, area: 1, margin: 0, currentPrice: 0, notes: '' };
+    // --- Global Calculator State (Moved from initializeCalculator) ---
+    let calculatorState = { 
+        materials: { 
+            1: { tipo: '', material: '', caracteristica: '', cor: '', price: 0, id: null },
+            2: { tipo: '', material: '', caracteristica: '', cor: '', price: 0, id: null },
+            3: { tipo: '', material: '', caracteristica: '', cor: '', price: 0, id: null }
+        },
+        machine: { id: null, nome: '', price: 0, originalPrice: 0 }, 
+        area: 1, margin: 0, currentPrice: 0, notes: '' 
+    };
+    let currentCalcRecordIndex = -1; 
         const resetCalculatorState = () => {
              calculatorState = {
                 materials: {
@@ -1074,16 +1050,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     2: { tipo: '', material: '', caracteristica: '', cor: '', price: 0, id: null },
                     3: { tipo: '', material: '', caracteristica: '', cor: '', price: 0, id: null }
                 },
-                machine: { id: null, nome: '', price: 0, originalPrice: 0 }, // Add originalPrice
+            machine: { id: null, nome: '', price: 0, originalPrice: 0 },
                 area: 1, margin: 0, currentPrice: 0, notes: ''
             };
-        }
+        currentCalcRecordIndex = -1; // Also reset index here
+    };
         resetCalculatorState(); // Initialize state
         
-        let currentCalcRecordIndex = -1; // Still needed to track if editing or new
 
-        // --- Calculator helper functions (defined within initializeCalculator scope) ---
+    // --- Global Calculator Helper Functions (Moved from initializeCalculator) ---
+
         const initializeDropdowns = async () => {
+         // Function body needs access to: supabase, machineSelect, materialSelectors
+         // Get references here or ensure they are accessible from outer scope
+         const machineSelect = document.getElementById('machine-select');
+         const materialSelectors = { /* ... get selectors ... */ }; // Redefine or ensure accessible
+         materialSelectors[1] = { tipo: document.getElementById('material1-tipo'), /* etc */ };
+         materialSelectors[2] = { tipo: document.getElementById('material2-tipo'), /* etc */ };
+         materialSelectors[3] = { tipo: document.getElementById('material3-tipo'), /* etc */ };
+
              try {
                 console.log('[Calculator] Initializing dropdowns...');
                 const { data: materialTypesData, error: materialError } = await supabase.from('materiais_impressao').select('tipo');
@@ -1093,345 +1078,827 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { data: machinesData, error: machinesError } = await supabase.from('maquinas').select('id, maquina, valor_m2');
                 if (machinesError) throw machinesError;
 
+            if(machineSelect) {
                 machineSelect.innerHTML = '<option value="">Selecione a Máquina</option>';
                 machinesData.forEach(machine => { const option = document.createElement('option'); option.value = machine.id; option.textContent = machine.maquina; machineSelect.appendChild(option); });
+            } else { console.warn("Machine select element not found during dropdown init."); }
 
-                [1, 2, 3].forEach(num => {
-                    const dropdown = materialSelectors[num].tipo;
+            Object.keys(materialSelectors).forEach(numStr => {
+                 const dropdown = materialSelectors[numStr]?.tipo;
+                 if (dropdown) {
                     dropdown.innerHTML = '<option value="">Selecione o Tipo</option>';
                     materialTypes.forEach(tipo => { const option = document.createElement('option'); option.value = tipo; option.textContent = tipo; dropdown.appendChild(option); });
+                 } else { console.warn(`Material ${numStr} tipo dropdown not found during init.`); }
                 });
                 console.log('[Calculator] Dropdowns populated.');
-            } catch (error) { console.error('[Calculator] Error initializing dropdowns:', error); alert('Erro ao inicializar opções da calculadora.'); }
-        };
-
-        // --- Record Navigation Functions ---
-        // const updateCalcNavigation = () => { ... }; // REMOVED ENTIRE FUNCTION
-        
-        const loadCalcRecord = async (index) => {
-            if (index < 0 || index >= allCalculations.length) {
-                console.warn(`[Calculator] Invalid index: ${index}`);
-                clearForm(); return;
-            }
-            currentCalcRecordIndex = index;
-            const record = allCalculations[index];
-            console.log(`[Calculator] Loading record ${index}:`, record);
-            clearForm(false); 
+        } catch (error) { console.error('[Calculator] Error initializing dropdowns:', error); alert('Erro ao inicializar opções da calculadora.'); throw error; } // Re-throw error
+    };
 
             const selectDropdownValue = async (dropdown, valueToSelect) => {
-                 if (!dropdown || valueToSelect === null || valueToSelect === undefined) return;
-                 if (Array.from(dropdown.options).some(opt => opt.value == valueToSelect)) dropdown.value = valueToSelect;
-                 else console.warn(`Value "${valueToSelect}" not found in dropdown ${dropdown.id}.`);
-             };
+                // Check if dropdown and value exist
+                if (!dropdown) {
+                    console.warn(`[Calculator] Cannot select value: dropdown is ${dropdown}`);
+                    return false;
+                }
+                
+                if (valueToSelect === null || valueToSelect === undefined) {
+                    console.warn(`[Calculator] Cannot select null/undefined value for dropdown ${dropdown.id}`);
+                    return false;
+                }
+                
+                // Convert to string to ensure consistent comparison
+                const valueStr = String(valueToSelect);
+                console.log(`[Calculator] Selecting value "${valueStr}" in dropdown ${dropdown.id}`);
+                
+                // Check if dropdown has any options already
+                let attempts = 0;
+                const maxAttempts = 20;
+                
+                while (dropdown.options.length <= 1 && attempts < maxAttempts) {
+                    console.log(`[Calculator] Waiting for dropdown options to populate... (${attempts+1}/${maxAttempts})`);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+                
+                // Log available options for debugging
+                const optionValues = Array.from(dropdown.options).map(opt => opt.value);
+                console.log(`[Calculator] Available options in ${dropdown.id}:`, optionValues);
+                
+                // Direct comparison with string values
+                let found = false;
+                for (let i = 0; i < dropdown.options.length; i++) {
+                    if (String(dropdown.options[i].value) === valueStr) {
+                        dropdown.selectedIndex = i;
+                        dropdown.value = dropdown.options[i].value;
+                        found = true;
+                        
+                        // Dispatch change event to trigger dependent dropdowns
+                        const event = new Event('change', { bubbles: true });
+                        dropdown.dispatchEvent(event);
+                        
+                        console.log(`[Calculator] Successfully selected "${valueStr}" in ${dropdown.id}`);
+                        break;
+                    }
+                }
+                
+                if (!found) {
+                    console.warn(`[Calculator] Value "${valueStr}" not found in dropdown ${dropdown.id}. Available options:`, optionValues);
+                    return false;
+                }
+                
+                return true;
+            };
 
-            // --- Load Materials Sequentially ---
-            if (record.material1_id) {
-                 await selectDropdownValue(materialSelectors[1].tipo, record.material1_tipo);
-                 await handleMaterialChange(1, 'tipo', record.material1_tipo, false);
-                 await selectDropdownValue(materialSelectors[1].material, record.material1_material);
-                 await handleMaterialChange(1, 'material', record.material1_material, false);
-                 await selectDropdownValue(materialSelectors[1].caracteristica, record.material1_caracteristica);
-                 await handleMaterialChange(1, 'caracteristica', record.material1_caracteristica, false);
-                 await selectDropdownValue(materialSelectors[1].cor, record.material1_cor);
-                 await handleMaterialChange(1, 'cor', record.material1_cor, true);
-            }
-             if (record.material2_id) {
-                  await selectDropdownValue(materialSelectors[2].tipo, record.material2_tipo);
-                  await handleMaterialChange(2, 'tipo', record.material2_tipo, false);
-                  await selectDropdownValue(materialSelectors[2].material, record.material2_material);
-                  await handleMaterialChange(2, 'material', record.material2_material, false);
-                  await selectDropdownValue(materialSelectors[2].caracteristica, record.material2_caracteristica);
-                  await handleMaterialChange(2, 'caracteristica', record.material2_caracteristica, false);
-                  await selectDropdownValue(materialSelectors[2].cor, record.material2_cor);
-                  await handleMaterialChange(2, 'cor', record.material2_cor, true);
-             }
-             if (record.material3_id) {
-                   await selectDropdownValue(materialSelectors[3].tipo, record.material3_tipo);
-                   await handleMaterialChange(3, 'tipo', record.material3_tipo, false);
-                   await selectDropdownValue(materialSelectors[3].material, record.material3_material);
-                   await handleMaterialChange(3, 'material', record.material3_material, false);
-                   await selectDropdownValue(materialSelectors[3].caracteristica, record.material3_caracteristica);
-                   await handleMaterialChange(3, 'caracteristica', record.material3_caracteristica, false);
-                   await selectDropdownValue(materialSelectors[3].cor, record.material3_cor);
-                   await handleMaterialChange(3, 'cor', record.material3_cor, true);
-             }
-            // --- Load Machine ---
-            if (record.maquina_id) { await selectDropdownValue(machineSelect, record.maquina_id); await handleMachineChange(record.maquina_id, true); }
-            // --- Load Other Fields ---
-            marginInput.value = record.margem_percentual || 0;
-            currentPriceInput.value = record.preco_atual ? String(record.preco_atual).replace('.', ',') : '';
-            if (notesTextarea) { notesTextarea.value = record.notas || ''; }
-            updateCalculations(); 
-            // updateCalcNavigation(); // REMOVED Call
-            console.log('[Calculator] Record loaded.');
-        };
-
-        // --- Clear Functions ---
          const clearMaterialSection = (materialNum, triggerCalcUpdate = true) => {
+        // Needs access to: materialSelectors, calculatorState, updateCalculations
+        const materialSelectors = { /* ... get selectors ... */ }; // Redefine or ensure accessible
+        materialSelectors[1] = { tipo: document.getElementById('material1-tipo'), material: document.getElementById('material1-material'), caracteristica: document.getElementById('material1-caracteristica'), cor: document.getElementById('material1-cor'), price: document.getElementById('material1-price') };
+        materialSelectors[2] = { tipo: document.getElementById('material2-tipo'), /* etc */ };
+        materialSelectors[3] = { tipo: document.getElementById('material3-tipo'), /* etc */ };
+        
              const sel = materialSelectors[materialNum];
-             sel.tipo.value = '';
-             sel.material.innerHTML = '<option value="">Selecione...</option>'; sel.material.disabled = true;
-             sel.caracteristica.innerHTML = '<option value="">Selecione...</option>'; sel.caracteristica.disabled = true;
-             sel.cor.innerHTML = '<option value="">Selecione...</option>'; sel.cor.disabled = true;
-             sel.price.textContent = '0.00€';
+        if (!sel) return;
+        if(sel.tipo) sel.tipo.value = '';
+        if(sel.material) { sel.material.innerHTML = '<option value="">Selecione...</option>'; sel.material.disabled = true; }
+        if(sel.caracteristica) { sel.caracteristica.innerHTML = '<option value="">Selecione...</option>'; sel.caracteristica.disabled = true; }
+        if(sel.cor) { sel.cor.innerHTML = '<option value="">Selecione...</option>'; sel.cor.disabled = true; }
+        if(sel.price) sel.price.textContent = '0.00€';
              calculatorState.materials[materialNum] = { tipo: '', material: '', caracteristica: '', cor: '', price: 0, id: null };
              if (triggerCalcUpdate) updateCalculations();
          };
+
          const clearMachineSection = (triggerCalcUpdate = true) => {
-             machineSelect.value = ''; machinePrice.textContent = '0.00€';
-             machine4x4Checkbox.checked = false; // Uncheck the checkbox
-             calculatorState.machine = { id: null, nome: '', price: 0, originalPrice: 0 }; // Reset originalPrice
+        // Needs access to: machineSelect, machinePrice, machine4x4Checkbox, calculatorState, updateCalculations
+        const machineSelect = document.getElementById('machine-select');
+        const machinePrice = document.getElementById('machine-price'); // Ensure this element exists
+        const machine4x4Checkbox = document.getElementById('machine-4x4-checkbox');
+
+        if(machineSelect) machineSelect.value = ''; 
+        if(machinePrice) machinePrice.textContent = '0.00€';
+        if(machine4x4Checkbox) machine4x4Checkbox.checked = false; 
+        calculatorState.machine = { id: null, nome: '', price: 0, originalPrice: 0 }; 
              if (triggerCalcUpdate) updateCalculations();
          };
-         const clearForm = (updateNav = true) => { // updateNav parameter no longer needed but harmless
+
+    const clearForm = (resetIndexAndState = true) => {
+        // Needs access to: clearMaterialSection, clearMachineSection, marginInput, currentPriceInput, notesTextarea, resetCalculatorState, searchInput, updateCalculations
              console.log('[Calculator] Clearing form.');
-             clearMaterialSection(1, false); clearMaterialSection(2, false); clearMaterialSection(3, false);
+        const marginInput = document.getElementById('margin-input');
+        const currentPriceInput = document.getElementById('current-price-input');
+        const notesTextarea = document.querySelector('.notes-section textarea[name="notes"]');
+        const searchInput = document.getElementById('search-calc-id');
+        const calcIdDisplay = document.getElementById('calculation-id-display'); 
+        
+        clearMaterialSection(1, false); 
+        clearMaterialSection(2, false); 
+        clearMaterialSection(3, false);
              clearMachineSection(false);
-             marginInput.value = 0; currentPriceInput.value = '';
+        if(marginInput) marginInput.value = 0; 
+        if(currentPriceInput) currentPriceInput.value = '';
              if (notesTextarea) notesTextarea.value = '';
-             resetCalculatorState(); // Reset the state object fully
-             currentCalcRecordIndex = -1;
-             // if (updateNav) updateCalcNavigation(); // REMOVED Call
+        if (calcIdDisplay) calcIdDisplay.textContent = 'Novo Cálculo'; // Update ID display
+
+        if (resetIndexAndState) {
+            resetCalculatorState(); 
+        }
+        
              updateCalculations(); // Update display based on cleared state
-             // Clear search input when clearing form for a new calculation
-             searchInput.value = ''; 
+        if(searchInput) searchInput.value = ''; 
          };
 
-        // --- Data Handling ---
+
          const handleMaterialChange = async (materialNum, field, value, triggerCalcUpdate = true) => {
+         // Needs access to: materialSelectors, calculatorState, supabase, updateCalculations
+         const materialSelectors = { /* ... get selectors ... */ }; // Redefine or ensure accessible
+         materialSelectors[1] = { tipo: document.getElementById('material1-tipo'), material: document.getElementById('material1-material'), caracteristica: document.getElementById('material1-caracteristica'), cor: document.getElementById('material1-cor'), price: document.getElementById('material1-price') };
+         materialSelectors[2] = { tipo: document.getElementById('material2-tipo'), /* etc */ };
+         materialSelectors[3] = { tipo: document.getElementById('material3-tipo'), /* etc */ };
+         
              const sel = materialSelectors[materialNum];
+         if (!sel) return;
              calculatorState.materials[materialNum][field] = value;
              let query = supabase.from('materiais_impressao');
-             let targetDropdown, dependentDropdowns, queryField;
+         let targetDropdown, dependentDropdowns = [], queryField;
 
+         // Clear subsequent fields when a higher-level one changes
              if (field === 'tipo') {
-                 clearMaterialSection(materialNum, false); calculatorState.materials[materialNum].tipo = value; 
-                 sel.material.disabled = !value; targetDropdown = sel.material; dependentDropdowns = [sel.caracteristica, sel.cor];
-                 if (value) query = query.select('material').eq('tipo', value); queryField = 'material';
+            if (!value) { clearMaterialSection(materialNum, triggerCalcUpdate); return; } // Clear full section if type is removed
+             calculatorState.materials[materialNum].material = ''; calculatorState.materials[materialNum].caracteristica = ''; calculatorState.materials[materialNum].cor = ''; calculatorState.materials[materialNum].price = 0; calculatorState.materials[materialNum].id = null;
+             targetDropdown = sel.material; queryField = 'material'; dependentDropdowns = [sel.caracteristica, sel.cor];
+             sel.caracteristica.innerHTML = '<option value="">Selecione...</option>'; sel.caracteristica.disabled = true;
+             sel.cor.innerHTML = '<option value="">Selecione...</option>'; sel.cor.disabled = true;
              } else if (field === 'material') {
-                  calculatorState.materials[materialNum].caracteristica=''; calculatorState.materials[materialNum].cor='';
-                  sel.caracteristica.disabled = !value; sel.cor.disabled = true;
-                  sel.caracteristica.innerHTML='<option value="">Selecione...</option>'; sel.cor.innerHTML='<option value="">Selecione...</option>';
-                  targetDropdown = sel.caracteristica; dependentDropdowns = [sel.cor];
-                  if (value) query = query.select('caracteristica').eq('tipo', calculatorState.materials[materialNum].tipo).eq('material', value); queryField = 'caracteristica';
+            if (!value) { // Clear dependent fields if material is deselected
+                calculatorState.materials[materialNum].caracteristica = ''; calculatorState.materials[materialNum].cor = ''; calculatorState.materials[materialNum].price = 0; calculatorState.materials[materialNum].id = null;
+                sel.caracteristica.innerHTML = '<option value="">Selecione...</option>'; sel.caracteristica.disabled = true;
+                sel.cor.innerHTML = '<option value="">Selecione...</option>'; sel.cor.disabled = true;
+                sel.price.textContent = '0.00€';
+                if(triggerCalcUpdate) updateCalculations();
+                return;
+            }
+             calculatorState.materials[materialNum].caracteristica = ''; calculatorState.materials[materialNum].cor = ''; calculatorState.materials[materialNum].price = 0; calculatorState.materials[materialNum].id = null;
+             targetDropdown = sel.caracteristica; queryField = 'caracteristica'; dependentDropdowns = [sel.cor];
+             sel.cor.innerHTML = '<option value="">Selecione...</option>'; sel.cor.disabled = true;
              } else if (field === 'caracteristica') {
-                  calculatorState.materials[materialNum].cor='';
-                  sel.cor.disabled = !value; sel.cor.innerHTML='<option value="">Selecione...</option>';
-                  targetDropdown = sel.cor; dependentDropdowns = [];
-                  if (value) query = query.select('cor').eq('tipo', calculatorState.materials[materialNum].tipo).eq('material', calculatorState.materials[materialNum].material).eq('caracteristica', value); queryField = 'cor';
+             if (!value) { // Clear dependent fields if caracteristica is deselected
+                 calculatorState.materials[materialNum].cor = ''; calculatorState.materials[materialNum].price = 0; calculatorState.materials[materialNum].id = null;
+                 sel.cor.innerHTML = '<option value="">Selecione...</option>'; sel.cor.disabled = true;
+                 sel.price.textContent = '0.00€';
+                 if(triggerCalcUpdate) updateCalculations();
+                 return;
+             }
+             calculatorState.materials[materialNum].cor = ''; calculatorState.materials[materialNum].price = 0; calculatorState.materials[materialNum].id = null;
+             targetDropdown = sel.cor; queryField = 'cor';
              } else if (field === 'cor') {
+             // Fetch price and ID when cor is selected
                   if (value) {
                      try {
                           const { data, error } = await supabase.from('materiais_impressao').select('id, media_m2_2024, media_m2_2023')
                              .eq('tipo', calculatorState.materials[materialNum].tipo).eq('material', calculatorState.materials[materialNum].material)
                              .eq('caracteristica', calculatorState.materials[materialNum].caracteristica).eq('cor', value).single();
-                         if (error) throw error;
+                    if (error && error.code !== 'PGRST116') throw error; // Ignore 'exact one row' error if not found
+                    if (data) {
                          calculatorState.materials[materialNum].id = data.id;
                          calculatorState.materials[materialNum].price = data.media_m2_2024 ?? data.media_m2_2023 ?? 0;
-                         sel.price.textContent = `${calculatorState.materials[materialNum].price.toFixed(2)}€`;
-                     } catch (error) { console.error('Error fetching material price:', error); calculatorState.materials[materialNum].price = 0; sel.price.textContent = '0.00€'; calculatorState.materials[materialNum].id = null; }
-                  } else { calculatorState.materials[materialNum].price = 0; sel.price.textContent = '0.00€'; calculatorState.materials[materialNum].id = null; }
-                  if (triggerCalcUpdate) updateCalculations();
-                  return;
+                         if(sel.price) sel.price.textContent = `${calculatorState.materials[materialNum].price.toFixed(2)}€`;
+                    } else {
+                        calculatorState.materials[materialNum].id = null; calculatorState.materials[materialNum].price = 0; if(sel.price) sel.price.textContent = '0.00€';
+                    }
+                } catch (error) { console.error('Error fetching material price:', error); calculatorState.materials[materialNum].price = 0; if(sel.price) sel.price.textContent = '0.00€'; calculatorState.materials[materialNum].id = null; }
+             } else { // Clear price if cor is deselected
+                 calculatorState.materials[materialNum].price = 0; if(sel.price) sel.price.textContent = '0.00€'; calculatorState.materials[materialNum].id = null; 
              }
+             if (triggerCalcUpdate) updateCalculations(); // Update total cost when cor changes (or is cleared)
+             return; // No further dropdowns to populate
+         }
 
-             if (value && targetDropdown) {
+         // Enable/disable and populate target dropdown
+         if (targetDropdown) targetDropdown.disabled = !value;
+         if (value && targetDropdown && queryField) {
+             query = query.select(queryField); // Add the select clause
                  try {
                      const { data, error } = await query;
                      if (error) throw error;
                      const uniqueValues = [...new Set(data.map(item => item[queryField]).filter(Boolean))].sort();
                      targetDropdown.innerHTML = `<option value="">Selecione o ${queryField.charAt(0).toUpperCase() + queryField.slice(1)}</option>`;
                      uniqueValues.forEach(val => { const option = document.createElement('option'); option.value = val; option.textContent = val; targetDropdown.appendChild(option); });
-                 } catch (error) { console.error(`Error fetching ${queryField}s:`, error); }
-             } else if (targetDropdown) {
-                  targetDropdown.innerHTML = `<option value="">Selecione o ${queryField.charAt(0).toUpperCase() + queryField.slice(1)}</option>`;
-             }
-             dependentDropdowns?.forEach(dd => { dd.innerHTML = '<option value="">Selecione...</option>'; dd.disabled = true; });
-             if (field !== 'cor') { sel.price.textContent = '0.00€'; calculatorState.materials[materialNum].price = 0; calculatorState.materials[materialNum].id = null; }
-             if (triggerCalcUpdate) updateCalculations();
-         };
+             } catch (error) { console.error(`Error fetching ${queryField}s:`, error); targetDropdown.innerHTML = '<option value="">Erro</option>'; }
+         } else if (targetDropdown) { // If value is cleared, reset target dropdown
+              targetDropdown.innerHTML = `<option value="">Selecione...</option>`;
+         }
+
+         // Disable dependent dropdowns
+         dependentDropdowns.forEach(dd => { if (dd) { dd.innerHTML = '<option value="">Selecione...</option>'; dd.disabled = true; } });
+         
+         // Clear price display if a higher level changes (except cor)
+         if (field !== 'cor' && sel.price) { sel.price.textContent = '0.00€'; calculatorState.materials[materialNum].price = 0; calculatorState.materials[materialNum].id = null;}
+         
+         if (triggerCalcUpdate) updateCalculations(); // Update calculations
+    };
+
 
         const handleMachineChange = async (machineId, triggerCalcUpdate = true) => {
+         // Needs access to: supabase, machine4x4Checkbox, calculatorState, machinePrice, clearMachineSection, updateCalculations
+         const machinePrice = document.getElementById('machine-price'); // Ensure exists
+         const machine4x4Checkbox = document.getElementById('machine-4x4-checkbox');
+         
              if (machineId) {
                  try {
                      const { data, error } = await supabase.from('maquinas').select('maquina, valor_m2').eq('id', machineId).single();
                      if (error) throw error;
                      const originalPrice = data.valor_m2 || 0;
-                     const multiplier = machine4x4Checkbox.checked ? 2 : 1; // Check checkbox state
-                     const effectivePrice = originalPrice * multiplier; // Calculate effective price
-                     calculatorState.machine = { id: machineId, nome: data.maquina, price: effectivePrice, originalPrice: originalPrice }; // Store both prices
-                     machinePrice.textContent = `${effectivePrice.toFixed(2)}€`; // Display effective price
+                 const multiplier = machine4x4Checkbox?.checked ? 2 : 1; 
+                 const effectivePrice = originalPrice * multiplier; 
+                 calculatorState.machine = { id: machineId, nome: data.maquina, price: effectivePrice, originalPrice: originalPrice }; 
+                 if(machinePrice) machinePrice.textContent = `${effectivePrice.toFixed(2)}€`; 
                  } catch (error) { console.error('Error fetching machine price:', error); clearMachineSection(false); }
-             } else { clearMachineSection(false); } // Clear section calls updateCalculations if triggerCalcUpdate is true
-             // Ensure updateCalculations is called if needed, respecting triggerCalcUpdate
+         } else { 
+             clearMachineSection(false); 
+         } 
              if (triggerCalcUpdate) updateCalculations(); 
          };
 
-        // --- Calculation Update ---
         const updateCalculations = () => {
+         // Needs access to: notesTextarea, marginInput, currentPriceInput, calculatorState, totalMaterialsCostEl, totalMachineCostEl, totalNetCostEl, finalPriceEl, priceDifferenceEl
+         const notesTextarea = document.querySelector('.notes-section textarea[name="notes"]');
+         const marginInput = document.getElementById('margin-input');
+         const currentPriceInput = document.getElementById('current-price-input');
+         const totalMaterialsCostEl = document.getElementById('total-materials-cost');
+         const totalMachineCostEl = document.getElementById('total-machine-cost');
+         const totalNetCostEl = document.getElementById('total-net-cost');
+         const finalPriceEl = document.getElementById('final-price');
+         const priceDifferenceEl = document.getElementById('price-difference');
+         
              // Store notes and margin/current price from inputs
              calculatorState.notes = notesTextarea?.value || '';
-             const margin = Number(marginInput.value) || 0;
-             const currentPrice = parseFloat(currentPriceInput.value.replace(',', '.')) || 0;
+         const margin = Number(marginInput?.value) || 0;
+         const currentPrice = parseFloat(currentPriceInput?.value?.replace(',', '.')) || 0;
              calculatorState.margin = margin;
              calculatorState.currentPrice = currentPrice;
 
              // Calculate costs based on state
              const materialsCostPerM2 = Object.values(calculatorState.materials).reduce((sum, mat) => sum + (Number(mat.price) || 0), 0);
-             const area = 1; // Assuming area is always 1 for now
+         const area = 1; // Assuming area is always 1 
              calculatorState.area = area;
 
-             // Machine cost already reflects the 4/4 doubling if applicable, as it's stored in calculatorState.machine.price
              const totalMaterialsCostValue = materialsCostPerM2 * area;
-             const machineCostValue = (Number(calculatorState.machine.price) || 0) * area; // Use the (potentially doubled) price from state
+         const machineCostValue = (Number(calculatorState.machine.price) || 0) * area; 
              const netCostValue = totalMaterialsCostValue + machineCostValue;
              const finalPriceValue = netCostValue * (1 + margin / 100);
 
              // Update UI elements
-             totalMaterialsCostEl.textContent = `${totalMaterialsCostValue.toFixed(2)}€`;
-             totalMachineCostEl.textContent = `${machineCostValue.toFixed(2)}€`; // Display the (potentially doubled) machine cost
-             totalNetCostEl.textContent = `${netCostValue.toFixed(2)}€`;
-             finalPriceEl.textContent = `${finalPriceValue.toFixed(2)}€`;
+         if(totalMaterialsCostEl) totalMaterialsCostEl.textContent = `${totalMaterialsCostValue.toFixed(2)}€`;
+         if(totalMachineCostEl) totalMachineCostEl.textContent = `${machineCostValue.toFixed(2)}€`; 
+         if(totalNetCostEl) totalNetCostEl.textContent = `${netCostValue.toFixed(2)}€`;
+         if(finalPriceEl) finalPriceEl.textContent = `${finalPriceValue.toFixed(2)}€`;
 
              // Update price difference display
+         if(priceDifferenceEl) {
              if (currentPrice > 0) {
                  const diff = ((finalPriceValue - currentPrice) / currentPrice) * 100;
                  priceDifferenceEl.textContent = `${diff.toFixed(2)}%`;
-                 priceDifferenceEl.className = `price-value-box ${diff > 0 ? 'positive-change' : diff < 0 ? 'negative-change' : ''}`;
+                 priceDifferenceEl.className = `price-value-box ${diff >= 0 ? 'positive-change' : 'negative-change'}`; // Simpler class logic
              } else {
-                 priceDifferenceEl.textContent = '0%';
+                 priceDifferenceEl.textContent = 'N/A'; // Or 0% if preferred
                  priceDifferenceEl.className = 'price-value-box';
              }
-         };
+         }
+         console.log("[Calculator] Calculations Updated."); // Add log
+    };
 
-        // --- Event Listeners ---
-        // Add listener for the 4x4 checkbox
-        machine4x4Checkbox.addEventListener('change', () => {
-            const originalPrice = calculatorState.machine.originalPrice || 0;
-            const multiplier = machine4x4Checkbox.checked ? 2 : 1;
-            const effectivePrice = originalPrice * multiplier;
+    const handleSaveCalculation = async () => {
+         // Needs access to: calculatorState, machine4x4Checkbox, saveButton, currentCalcRecordIndex, allCalculations, supabase, fetchAllCalculations, clearForm, searchInput, feather
+         const saveCalculationButton = document.getElementById('save-calculation'); // Ensure exists
+         const searchInput = document.getElementById('search-calc-id'); // Ensure exists
+         const machine4x4Checkbox = document.getElementById('machine-4x4-checkbox'); // Ensure exists
 
-            calculatorState.machine.price = effectivePrice; // Update state price
-            machinePrice.textContent = `${effectivePrice.toFixed(2)}€`; // Update display price
-
-            updateCalculations(); // Recalculate totals
-        });
-
-        // --- Save Calculation ---
-        const saveCalculation = async () => {
-             try {
-                 if (!calculatorState.materials[1].id || !calculatorState.machine.id) { alert('Selecione Material 1 e Máquina.'); return; }
+         try {
+             if (!calculatorState.materials[1].id || !calculatorState.machine.id) { 
+                 alert('Selecione Material 1 e Máquina.'); 
+                 return; 
+             }
+             
+             // Get machine name based on ID for notes
+             const machineInfo = allMaquinasData.find(m => m.id === calculatorState.machine.id);
+             const machineNameForNotes = machineInfo ? machineInfo.maquina : 'Desconhecida'; // Use fetched name
+             
+             // Prepare data, explicitly setting nulls
                  const calculationData = {
-                     material1_id: calculatorState.materials[1].id, material1_tipo: calculatorState.materials[1].tipo, material1_material: calculatorState.materials[1].material, material1_caracteristica: calculatorState.materials[1].caracteristica, material1_cor: calculatorState.materials[1].cor, material1_valor_m2: calculatorState.materials[1].price,
-                     material2_id: calculatorState.materials[2].id || null, material2_tipo: calculatorState.materials[2].tipo || null, material2_material: calculatorState.materials[2].material || null, material2_caracteristica: calculatorState.materials[2].caracteristica || null, material2_cor: calculatorState.materials[2].cor || null, material2_valor_m2: calculatorState.materials[2].price || null,
-                     material3_id: calculatorState.materials[3].id || null, material3_tipo: calculatorState.materials[3].tipo || null, material3_material: calculatorState.materials[3].material || null, material3_caracteristica: calculatorState.materials[3].caracteristica || null, material3_cor: calculatorState.materials[3].cor || null, material3_valor_m2: calculatorState.materials[3].price || null,
-                     maquina_id: calculatorState.machine.id, maquina_nome: calculatorState.machine.nome, maquina_valor_m2: calculatorState.machine.price,
-                     metros_quadrados: calculatorState.area, margem_percentual: calculatorState.margin, preco_atual: calculatorState.currentPrice || null, notas: calculatorState.notes || '' // Ensure notas is at least an empty string
+                 material1_id: calculatorState.materials[1].id, 
+                 material1_tipo: calculatorState.materials[1].tipo, 
+                 material1_material: calculatorState.materials[1].material, 
+                 material1_caracteristica: calculatorState.materials[1].caracteristica, 
+                 material1_cor: calculatorState.materials[1].cor, 
+                 material1_valor_m2: calculatorState.materials[1].price,
+                 
+                 material2_id: calculatorState.materials[2].id || null, 
+                 material2_tipo: calculatorState.materials[2].tipo || null, 
+                 material2_material: calculatorState.materials[2].material || null, 
+                 material2_caracteristica: calculatorState.materials[2].caracteristica || null, 
+                 material2_cor: calculatorState.materials[2].cor || null, 
+                 material2_valor_m2: calculatorState.materials[2].price || null,
+                 
+                 material3_id: calculatorState.materials[3].id || null, 
+                 material3_tipo: calculatorState.materials[3].tipo || null, 
+                 material3_material: calculatorState.materials[3].material || null, 
+                 material3_caracteristica: calculatorState.materials[3].caracteristica || null, 
+                 material3_cor: calculatorState.materials[3].cor || null, 
+                 material3_valor_m2: calculatorState.materials[3].price || null,
+                 
+                 maquina_id: calculatorState.machine.id, 
+                 maquina_nome: machineNameForNotes, // Use name fetched from maquinas table
+                 maquina_valor_m2: calculatorState.machine.price, // This is the effective price (possibly doubled)
+                 machine_4x4: machine4x4Checkbox?.checked || false, // Save checkbox state
+                 
+                 metros_quadrados: calculatorState.area, 
+                 margem_percentual: calculatorState.margin, 
+                 preco_atual: calculatorState.currentPrice || null, 
+                 notas: calculatorState.notes || '' // Base notes from textarea
                  };
 
                 // --- Append machine details to notes ---
                 let machineNoteString = '';
-                const machineName = calculatorState.machine.nome;
-                const is4x4 = machine4x4Checkbox.checked;
+             const is4x4 = machine4x4Checkbox?.checked || false;
 
-                if (machineName === 'Sem impressão') {
-                    machineNoteString = 'Sem Impressão';
-                } else if (machineName === 'Mimaki') {
-                    machineNoteString = is4x4 ? '4/4 cores solvente' : '4/0 cores solvente';
-                } else if (machineName === 'Mimaki Branco') {
-                    machineNoteString = '4+Branco cores UV';
-                } else if (machineName === 'Inca' || machineName === 'Fuji') {
-                    machineNoteString = is4x4 ? '4/4 cores UV' : '4/0 cores UV';
-                }
+             if (machineNameForNotes === 'Sem impressão') { machineNoteString = 'Sem Impressão'; }
+             else if (machineNameForNotes === 'Mimaki') { machineNoteString = is4x4 ? '4/4 cores solvente' : '4/0 cores solvente'; } 
+             else if (machineNameForNotes === 'Mimaki Branco') { machineNoteString = '4+Branco cores UV'; } 
+             else if (machineNameForNotes === 'Inca' || machineNameForNotes === 'Fuji') { machineNoteString = is4x4 ? '4/4 cores UV' : '4/0 cores UV'; }
 
                 if (machineNoteString) {
-                    if (calculationData.notas) { // Check if notes already has content
-                        calculationData.notas += ", " + machineNoteString;
-                    } else {
-                        calculationData.notas = machineNoteString;
-                    }
-                }
-                // Ensure notes is null if it ended up empty after logic
-                if (!calculationData.notas) {
-                    calculationData.notas = null;
-                }
+                 if (calculationData.notas) { calculationData.notas += ", " + machineNoteString; } 
+                 else { calculationData.notas = machineNoteString; }
+             }
+             if (!calculationData.notas) { calculationData.notas = null; } // Ensure null if empty
                 // --- End Append --- 
 
-                 saveButton.disabled = true; saveButton.textContent = 'Guardando...';
-                 let existingRecordId = (currentCalcRecordIndex !== -1 && allCalculations[currentCalcRecordIndex]) ? allCalculations[currentCalcRecordIndex].calculation_id : null;
+             if(saveCalculationButton) { saveCalculationButton.disabled = true; saveCalculationButton.textContent = 'Guardando...'; }
+             
+             let existingRecordUUID = (currentCalcRecordIndex !== -1 && allCalculations[currentCalcRecordIndex]) ? allCalculations[currentCalcRecordIndex].id : null;
                  let savedData, error;
-                 if (existingRecordId) { ({ data: savedData, error } = await supabase.from('calculadora_materiais').update(calculationData).eq('calculation_id', existingRecordId).select().single()); }
-                 else { ({ data: savedData, error } = await supabase.from('calculadora_materiais').insert([calculationData]).select().single()); }
+
+             if (existingRecordUUID) { 
+                 // UPDATE using UUID
+                 console.log(`[Save Calc] Updating UUID: ${existingRecordUUID}`);
+                 ({ data: savedData, error } = await supabase.from('calculadora_materiais').update(calculationData).eq('id', existingRecordUUID).select().single()); 
+             } else { 
+                 // INSERT new
+                 console.log(`[Save Calc] Inserting new record.`);
+                  // Remove UUID if present before insert (shouldn't be, but safer)
+                 delete calculationData.id; 
+                 ({ data: savedData, error } = await supabase.from('calculadora_materiais').insert([calculationData]).select().single()); 
+             }
+             
                  if (error) throw error;
-                 console.log('Calculation saved:', savedData); alert('Cálculo guardado!');
-                 await fetchAllCalculations();
-                 const savedIndex = allCalculations.findIndex(c => c.calculation_id === savedData.calculation_id);
+             
+             console.log('Calculation saved:', savedData); 
+             alert('Cálculo guardado!');
+             
+             await fetchAllCalculations(); // Refresh the global list
+             
+             // Find the index using UUID now
+             const savedIndex = allCalculations.findIndex(c => c.id === savedData.id); 
+             
                  if (savedIndex !== -1) { 
-                     // Instead of loading, just update the index if we were editing
+                 // Stay on the saved record
                      currentCalcRecordIndex = savedIndex;
-                     // Maybe update search input with ID?
-                     searchInput.value = savedData.calculation_id;
+                 if(searchInput) searchInput.value = savedData.calculation_id; // Display numeric ID in search
+                 // Reload the form to reflect any potential changes from DB triggers/defaults
+                 loadCalcRecord(savedIndex); 
                  } else { 
-                     // If it was a new record, clear form to indicate readiness for another new one
-                     clearForm(); 
-                 }
-             } catch (error) { console.error('Error saving calc:', error); alert(`Erro ao guardar: ${error.message}`); }
-             finally { saveButton.disabled = false; saveButton.textContent = 'Guardar Cálculo'; feather.replace(); }
-         };
+                  console.warn("Saved record not found immediately after fetch, clearing form.");
+                  clearForm(true); // Clear form if it was new or couldn't be found
+             }
+         } catch (error) { 
+             console.error('Error saving calculation:', error); 
+             alert(`Erro ao guardar cálculo: ${error.message}`); 
+         } finally { 
+             if(saveCalculationButton) { saveCalculationButton.disabled = false; saveCalculationButton.textContent = 'Guardar Cálculo'; feather?.replace(); }
+         }
+    };
 
-        // --- Search Function ---
-         const handleSearch = () => {
-             const searchId = parseInt(searchInput.value);
-             if (isNaN(searchId)) { alert('Insira um ID.'); return; }
-             const recordIndex = allCalculations.findIndex(calc => calc.calculation_id === searchId);
-             if (recordIndex === -1) { alert(`ID ${searchId} não encontrado.`); } else { loadCalcRecord(recordIndex); }
-         };
 
-        // --- Event Listeners Setup ---
-        // nextButton.addEventListener('click', () => { ... }); // REMOVED LISTENER
-         clearMaterialButtons.forEach(button => { button.addEventListener('click', () => { clearMaterialSection(parseInt(button.dataset.materialNum)); }); });
-         clearMachineButton.addEventListener('click', () => clearMachineSection());
-         searchButton.addEventListener('click', handleSearch);
-         searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
-         Object.entries(materialSelectors).forEach(([num, sel]) => {
-             sel.tipo.addEventListener('change', (e) => handleMaterialChange(num, 'tipo', e.target.value));
-             sel.material.addEventListener('change', (e) => handleMaterialChange(num, 'material', e.target.value));
-             sel.caracteristica.addEventListener('change', (e) => handleMaterialChange(num, 'caracteristica', e.target.value));
-             sel.cor.addEventListener('change', (e) => handleMaterialChange(num, 'cor', e.target.value));
-         });
-         machineSelect.addEventListener('change', (e) => handleMachineChange(e.target.value));
-         marginInput.addEventListener('input', updateCalculations);
-         currentPriceInput.addEventListener('input', updateCalculations);
-         if (notesTextarea) notesTextarea.addEventListener('input', updateCalculations);
-         saveButton.addEventListener('click', saveCalculation);
+    const loadCalcRecord = async (index) => {
+        console.log(`[Calculator Load] Starting load process for index: ${index}`, {
+            allCalculationsLength: allCalculations?.length || 0,
+            currentIndex: index,
+            recordToLoad: allCalculations?.[index]
+        });
 
-        // --- Initial Load for Calculator ---
-        initializeDropdowns().then(() => {
-            fetchAllCalculations().then(() => {
-                // Success: Default to the "Novo" state now
-                console.log('[Calculator] Starting in Novo state.');
-                clearForm(true); // Start in Novo state
-            }).catch(err => {
-                // Error fetching:
-                console.error("[Calculator] Initial fetch failed:", err);
-                alert('Falha ao carregar cálculos iniciais.');
-                clearForm(true); // Clear form on error
+        // Ensure we have allCalculations populated
+        if (!allCalculations || allCalculations.length === 0) {
+            console.error('[Calculator Load] Cannot load record - allCalculations is empty!');
+            alert('Não é possível carregar o registo - dados não disponíveis');
+            return;
+        }
+
+        if (index < 0 || index >= allCalculations.length) {
+            console.warn(`[Calculator Load] Invalid index: ${index}`, {
+                allCalculationsLength: allCalculations?.length,
+                index: index
             });
+            clearForm(); 
+            return; 
+        }
+        
+        const record = allCalculations[index];
+        console.log('[Calculator Load] Record found:', {
+            uuid: record.id,
+            calculation_id: record.calculation_id,
+            material1_id: record.material1_id,
+            material1_tipo: record.material1_tipo,
+        });
+        
+        currentCalcRecordIndex = index;
+        clearForm(false); // Clear form but keep index
+        
+        // Log the status of form elements after clearing 
+        const searchInput = document.getElementById('search-calc-id');
+        const material1Elements = {
+            tipo: document.getElementById('material1-tipo'),
+            material: document.getElementById('material1-material'),
+            caracteristica: document.getElementById('material1-caracteristica'),
+            cor: document.getElementById('material1-cor'),
+            price: document.getElementById('material1-price')
+        };
+        const machineSelect = document.getElementById('machine-select');
+        const marginInput = document.getElementById('margin-input');
+        const calcIdDisplay = document.getElementById('calculation-id-display');
+        
+        console.log('[Calculator] Form elements status:', {
+            material1Elements: {
+                tipo: !!material1Elements.tipo,
+                material: !!material1Elements.material,
+                caracteristica: !!material1Elements.caracteristica,
+                cor: !!material1Elements.cor,
+                price: !!material1Elements.price
+            },
+            machineSelect: !!machineSelect,
+            marginInput: !!marginInput,
+            calcIdDisplay: !!calcIdDisplay
         });
 
-        sectionElement.classList.add('calculator-initialized');
-        console.log('[Calculator] Initialized successfully.');
+        // Helper function to wait between operations
+        const pause = (ms = 50) => new Promise(resolve => setTimeout(resolve, ms));
 
-        // Add event listener for new calculation button
-        document.getElementById('new-calculation').addEventListener('click', () => {
-            clearForm(true); // Still needed to reset the form explicitly
-        });
+        try {
+            // Set calculation ID in search input if available
+            if (searchInput && record.calculation_id) {
+                searchInput.value = record.calculation_id;
+            }
+            
+            // === Load Material 1 ===
+            if (record.material1_tipo) {
+                console.log('[Calculator] Loading Material 1:', {
+                    tipo: record.material1_tipo,
+                    material: record.material1_material,
+                    caracteristica: record.material1_caracteristica, 
+                    cor: record.material1_cor
+                });
+                
+                // Select material 1 tipo first and wait to ensure dependent dropdowns update
+                if (material1Elements.tipo) {
+                    const tipoSuccess = await selectDropdownValue(material1Elements.tipo, record.material1_tipo);
+                    if (!tipoSuccess) {
+                        console.error(`[Calculator] Failed to select tipo: ${record.material1_tipo}`);
+                        return; // Early exit if we can't select the basic type
+                    }
+                    
+                    await pause(200); // Wait for dependent dropdowns to update
+                    
+                    // Now select material
+                    if (material1Elements.material) {
+                        await selectDropdownValue(material1Elements.material, record.material1_material);
+                        await pause(100);
+                    }
+                    
+                    // Select caracteristica
+                    if (material1Elements.caracteristica) {
+                        await selectDropdownValue(material1Elements.caracteristica, record.material1_caracteristica);
+                        await pause(100);
+                    }
+                    
+                    // Finally select color
+                    if (material1Elements.cor) {
+                        await selectDropdownValue(material1Elements.cor, record.material1_cor);
+                        await pause(100);
+                    }
+                }
+                updateCalculations();
+            }
+            
+            // === Load Material 2 (if exists) ===
+            if (record.material2_tipo) {
+                const material2Elements = {
+                    tipo: document.getElementById('material2-tipo'),
+                    material: document.getElementById('material2-material'),
+                    caracteristica: document.getElementById('material2-caracteristica'),
+                    cor: document.getElementById('material2-cor')
+                };
+                
+                console.log('[Calculator] Loading Material 2:', {
+                    tipo: record.material2_tipo,
+                    material: record.material2_material,
+                    caracteristica: record.material2_caracteristica, 
+                    cor: record.material2_cor
+                });
+                
+                if (material2Elements.tipo) {
+                    await selectDropdownValue(material2Elements.tipo, record.material2_tipo);
+                    await pause(200);
+                    
+                    if (material2Elements.material) {
+                        await selectDropdownValue(material2Elements.material, record.material2_material);
+                        await pause(100);
+                    }
+                    
+                    if (material2Elements.caracteristica) {
+                        await selectDropdownValue(material2Elements.caracteristica, record.material2_caracteristica);
+                        await pause(100);
+                    }
+                    
+                    if (material2Elements.cor) {
+                        await selectDropdownValue(material2Elements.cor, record.material2_cor);
+                        await pause(100);
+                    }
+                }
+                updateCalculations();
+            }
+            
+            // === Load Material 3 (if exists) ===
+            if (record.material3_tipo) {
+                const material3Elements = {
+                    tipo: document.getElementById('material3-tipo'),
+                    material: document.getElementById('material3-material'),
+                    caracteristica: document.getElementById('material3-caracteristica'),
+                    cor: document.getElementById('material3-cor')
+                };
+                
+                console.log('[Calculator] Loading Material 3:', {
+                    tipo: record.material3_tipo,
+                    material: record.material3_material,
+                    caracteristica: record.material3_caracteristica, 
+                    cor: record.material3_cor
+                });
+                
+                if (material3Elements.tipo) {
+                    await selectDropdownValue(material3Elements.tipo, record.material3_tipo);
+                    await pause(200);
+                    
+                    if (material3Elements.material) {
+                        await selectDropdownValue(material3Elements.material, record.material3_material);
+                        await pause(100);
+                    }
+                    
+                    if (material3Elements.caracteristica) {
+                        await selectDropdownValue(material3Elements.caracteristica, record.material3_caracteristica);
+                        await pause(100);
+                    }
+                    
+                    if (material3Elements.cor) {
+                        await selectDropdownValue(material3Elements.cor, record.material3_cor);
+                        await pause(100);
+                    }
+                }
+                updateCalculations();
+            }
+            
+            // === Load Machine ===
+            if (record.maquina_id && machineSelect) {
+                console.log('[Calculator] Loading Machine:', {
+                    id: record.maquina_id,
+                    name: record.maquina_nome,
+                    is4x4: record.machine_4x4
+                });
+                
+                await selectDropdownValue(machineSelect, record.maquina_id);
+                await pause(100);
+                
+                // Set 4x4 checkbox if applicable
+                const machine4x4Checkbox = document.getElementById('machine-4x4-checkbox');
+                if (machine4x4Checkbox && record.machine_4x4) {
+                    machine4x4Checkbox.checked = true;
+                    // Trigger change to update calculations
+                    machine4x4Checkbox.dispatchEvent(new Event('change'));
+                }
+            }
+            
+            // === Load Margin and Current Price ===
+            if (marginInput && record.margem_percentual) {
+                marginInput.value = record.margem_percentual;
+            }
+            
+            const currentPriceInput = document.getElementById('current-price-input');
+            if (currentPriceInput && record.preco_atual) {
+                currentPriceInput.value = record.preco_atual;
+            }
+            
+            // === Load Notes ===
+            const notesTextarea = document.querySelector('.notes-section textarea[name="notes"]');
+            if (notesTextarea && record.notas) {
+                notesTextarea.value = record.notas;
+            }
+            
+            console.log('[Calculator] Triggering final calculation update');
+            updateCalculations();
+            console.log('[Calculator] Record loaded successfully');
+            
+        } catch (error) {
+            console.error('[Calculator] Error loading record:', error);
+            alert('Erro ao carregar o registo. Por favor tente novamente.');
+            clearForm(true); // Reset on error
+        }
+    };
 
-        // Expose calculator functions globally through calculatorApp
+    // --- END Calculator Helper Functions ---
+
+
+    // --- Initialize Calculator Section (Refactored) ---
+    const initializeCalculator = async () => { 
+        console.log('[Calculator] Initializing...');
+        
+        // Get references to elements (Assume they are defined/accessible in this scope)
+        const searchInput = document.getElementById('search-calc-id');
+        const searchButton = document.getElementById('search-button');
+        const newCalculationButton = document.getElementById('new-calculation');
+        const saveCalculationButton = document.getElementById('save-calculation');
+        const materialSelectors = { /* ... as defined globally or fetched ... */ };
+         materialSelectors[1] = { tipo: document.getElementById('material1-tipo'), material: document.getElementById('material1-material'), caracteristica: document.getElementById('material1-caracteristica'), cor: document.getElementById('material1-cor'), price: document.getElementById('material1-price') };
+         materialSelectors[2] = { tipo: document.getElementById('material2-tipo'), /* etc */ };
+         materialSelectors[3] = { tipo: document.getElementById('material3-tipo'), /* etc */ };
+        const machineSelect = document.getElementById('machine-select');
+        const machine4x4Checkbox = document.getElementById('machine-4x4-checkbox');
+        const marginInput = document.getElementById('margin-input');
+        const currentPriceInput = document.getElementById('current-price-input');
+        const notesTextarea = document.querySelector('.notes-section textarea[name="notes"]');
+        const finalPriceEl = document.getElementById('final-price'); // Example check
+        
+        // --- Verify elements ---
+        if (!searchInput || !searchButton || !newCalculationButton || !saveCalculationButton || !finalPriceEl ) {
+             console.error("Calculator critical elements not found! Initialization aborted.");
+             console.log("Missing elements:", {
+                searchInput: !!searchInput,
+                searchButton: !!searchButton,
+                newCalculationButton: !!newCalculationButton,
+                saveCalculationButton: !!saveCalculationButton,
+                finalPriceEl: !!finalPriceEl
+             });
+             if(searchInput) searchInput.disabled = true;
+             if(searchButton) searchButton.disabled = true;
+             return; 
+        }
+
+        try {
+            console.log('[Calculator] Awaiting Dropdown Initialization...');
+            await initializeDropdowns(); 
+            console.log('[Calculator] Dropdowns Initialized.');
+
+            console.log('[Calculator] Awaiting Initial Calculation Fetch...');
+            try {
+                await fetchAllCalculations(); 
+                console.log(`[Calculator] Initial Calculations Fetched: ${allCalculations.length} records`);
+            } catch (err) {
+                console.error('[Calculator] Error fetching calculations during initialization:', err);
+                // Still continue with initialization, we'll handle missing data during search
+            }
+
+            // --- Attach Event Listeners AFTER setup --- 
+            console.log('[Calculator] Attaching Event Listeners...');
+            
+            // Add separate direct event handlers for search
+            searchInput.addEventListener('keypress', async (event) => {
+                if (event.key === 'Enter') {
+                    console.log('[Calculator] Search input - Enter key pressed');
+                    event.preventDefault();
+                    try {
+                        await handleSearch();
+                    } catch (error) {
+                        console.error('[Calculator Search] Error during search:', error);
+                    }
+                }
+            });
+            
+            searchButton.addEventListener('click', async () => {
+                console.log('[Calculator] Search button clicked');
+                try {
+                    await handleSearch();
+                } catch (error) {
+                    console.error('[Calculator Search] Error during search:', error);
+                }
+            });
+            
+            newCalculationButton.addEventListener('click', () => clearForm(true));
+            saveCalculationButton.addEventListener('click', handleSaveCalculation);
+            
+            Object.keys(materialSelectors).forEach(numStr => {
+                 const num = parseInt(numStr);
+                 const selectors = materialSelectors[num];
+                 selectors.tipo?.addEventListener('change', (e) => handleMaterialChange(num, 'tipo', e.target.value));
+                 selectors.material?.addEventListener('change', (e) => handleMaterialChange(num, 'material', e.target.value));
+                 selectors.caracteristica?.addEventListener('change', (e) => handleMaterialChange(num, 'caracteristica', e.target.value));
+                 selectors.cor?.addEventListener('change', (e) => handleMaterialChange(num, 'cor', e.target.value));
+                 const clearButton = document.querySelector(`.clear-button[data-material-num="${num}"]`);
+                 clearButton?.addEventListener('click', () => clearMaterialSection(num));
+            });
+            
+            machineSelect?.addEventListener('change', (e) => handleMachineChange(e.target.value));
+            machine4x4Checkbox?.addEventListener('change', updateCalculations); 
+            const clearMachineButton = document.getElementById('clear-machine');
+            clearMachineButton?.addEventListener('click', clearMachineSection);
+
+            marginInput?.addEventListener('input', updateCalculations); 
+            currentPriceInput?.addEventListener('input', updateCalculations);
+            
+            console.log('[Calculator] Event Listeners Attached.');
+            
+            // --- Set Initial State --- 
+            clearForm(true); 
+            console.log('[Calculator] Initialized Successfully (Async).');
+
+        } catch (error) {
+            console.error("[Calculator] Error during async initialization:", error);
+            alert(`Erro crítico durante a inicialização da calculadora: ${error.message}`);
+            if(searchInput) searchInput.disabled = true; // Disable search on error
+            if(searchButton) searchButton.disabled = true;
+        }
+        
+        initializedSections['calculadora'] = true; 
+        
+        // Expose functions 
         window.calculatorApp.loadRecord = loadCalcRecord;
         window.calculatorApp.clearForm = clearForm;
         window.calculatorApp.fetchAllCalculations = fetchAllCalculations;
         window.calculatorApp.updateCalculations = updateCalculations;
+    };
+    
+    // ... (Rest of the script) ...
+
+    // --- Search Function --- (Simplified version)
+    const handleSearch = async () => {
+        console.log('[Calculator Search] Function called');
+        
+        try {
+            // Get input element
+            const searchInput = document.getElementById('search-calc-id');
+            if (!searchInput) {
+                console.error('[Calculator Search] Search input element not found');
+                return;
+            }
+            
+            // Get and validate value
+            const searchValue = searchInput.value.trim();
+            console.log('[Calculator Search] Search value:', searchValue);
+            
+            // Simple validation
+            if (!searchValue) {
+                alert('Insira um ID numérico válido.');
+                return;
+            }
+            
+            const searchId = parseInt(searchValue);
+            console.log('[Calculator Search] Parsed ID:', searchId, 'isNaN:', isNaN(searchId));
+            
+            if (isNaN(searchId)) {
+                alert('Insira um ID numérico válido.');
+                return;
+            }
+            
+            // Ensure dropdowns are initialized first
+            console.log('[Calculator Search] Ensuring dropdowns are initialized...');
+            await initializeDropdowns();
+            console.log('[Calculator Search] Dropdowns initialized, proceeding with search.');
+            
+            // Check if we have data
+            if (!allCalculations || allCalculations.length === 0) {
+                console.warn('[Calculator Search] No calculations data loaded. Fetching...');
+                await fetchAllCalculations();
+                if (!allCalculations || allCalculations.length === 0) {
+                    alert('Sem dados de cálculos carregados. Tente novamente.');
+                    console.warn('[Calculator Search] No calculations data loaded');
+                    return;
+                }
+            }
+            
+            // Find record
+            console.log('[Calculator Search] Looking for ID:', searchId, 'in', allCalculations.length, 'records');
+            const recordIndex = allCalculations.findIndex(calc => calc.calculation_id === searchId);
+            
+            if (recordIndex === -1) {
+                console.log('[Calculator Search] ID not found');
+                alert(`ID ${searchId} não encontrado.`);
+                return;
+            }
+            
+            // Load the record
+            console.log('[Calculator Search] Found record at index:', recordIndex);
+            // Add a small delay to ensure dropdowns are fully populated
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await loadCalcRecord(recordIndex);
+            
+        } catch (error) {
+            console.error('[Calculator Search] Error:', error);
+            alert('Erro ao processar a pesquisa. Tente novamente.');
+        }
     };
 
     // --- Funções Específicas da Seção Máquinas ---
@@ -1774,12 +2241,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleTableActions = async (event) => {
         const button = event.target.closest('.action-button');
         if (!button) return; // Click wasn't on an action button
-
-        const id = button.dataset.id;
-        if (!id) {
-            console.error('Action button is missing data-id');
-            return;
-        }
         
         // Determine the table name from the button's context
         const tableElement = button.closest('table');
@@ -1788,50 +2249,88 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const tableName = tableElement.id.replace('-table', '');
-        const recordId = parseInt(id); // Or keep as string if PK is not integer
 
         if (button.classList.contains('edit-button')) {
+            const uuid = button.dataset.uuid; // Get the UUID for edit
+            const calcId = button.dataset.calcId; // Get the calculation ID for navigation
+            
+            console.log('[TableActions] Edit button clicked:', {
+                tableName,
+                uuid,
+                calcId,
+                buttonData: button.dataset,
+                buttonHTML: button.outerHTML
+            });
+
+            if (!uuid) {
+                console.error('Edit button is missing data-uuid');
+                return;
+            }
+            
             if (tableName === 'tabela_precos') {
-                handleEditCalculation(recordId); // Keep specific handler for calculator
+                console.log('[TableActions] Navigating to calculator for editing record:', {
+                    uuid,
+                    calcId
+                });
+                // Navigate to calculator and load the record
+                await switchSection('calculadora');
+                await handleEditCalculation(uuid);
             } else {
-                openModal(tableName, recordId); // Call openModal for generic edits
+                 // Keep generic edit using UUID
+                 if (!uuid) {
+                      console.error('Generic Edit button is missing data-uuid');
+                      return;
+                 }
+                openModal(tableName, uuid);
             }
         } else if (button.classList.contains('delete-button')) {
+            const uuid = button.dataset.uuid; // Get UUID for delete
+            const calcId = button.dataset.calcId; // Get Calc ID for display
+            if (!uuid) {
+                console.error('Delete button is missing data-uuid');
+                return;
+            }
+
             if (tableName === 'tabela_precos') {
-                handleDeleteRecord('calculadora_materiais', recordId); // Use DB table name
+                handleDeleteRecord('calculadora_materiais', uuid, calcId); // Pass both IDs
             } else {
-                 handleDeleteRecord(tableName, recordId);
+                 // Generic delete - pass UUID as both IDs for now, might need adjustment
+                 handleDeleteRecord(tableName, uuid, uuid); 
             }
         }
     };
 
     // --- Function to handle Editing a Calculation ---
-    const handleEditCalculation = async (calculationId) => { // Make the function async
-        console.log(`[Edit] Request to edit calculation ID: ${calculationId}`);
+    const handleEditCalculation = async (calculationUUID) => { // Accept UUID
+        console.log(`[Edit] Request to edit calculation with UUID: ${calculationUUID}`);
         try {
-            // Navigate to the calculator section and WAIT for it to finish loading
             await switchSection('calculadora'); 
             
-            // Now that the section is switched and likely initialized, find and load the record
-            // Ensure allCalculations is available (it should be fetched by initializeCalculator called within switchSection)
+            // Ensure dropdowns are initialized first
+            console.log('[Edit] Ensuring dropdowns are initialized...');
+            await initializeDropdowns();
+            console.log('[Edit] Dropdowns initialized, proceeding with record load.');
+            
             if (!allCalculations || allCalculations.length === 0) {
-                 console.warn('[Edit] allCalculations array is not populated yet or is empty after section switch.');
-                 // Maybe try fetching again explicitly if needed, though switchSection should handle it.
-                 await fetchAllCalculations(); // Explicitly fetch if might be needed
+                 console.warn('[Edit] allCalculations not populated. Fetching...');
+                 await fetchAllCalculations(); 
                  if (!allCalculations || allCalculations.length === 0) {
                      throw new Error('Não foi possível carregar os dados da calculadora.');
                  }
             }
 
-            const recordIndex = allCalculations.findIndex(calc => calc.calculation_id === calculationId);
+            // Find index using the UUID
+            const recordIndex = allCalculations.findIndex(calc => calc.id === calculationUUID);
+            
             if (recordIndex !== -1) {
-                console.log(`[Edit] Found record at index ${recordIndex}. Loading...`);
-                // loadCalcRecord is synchronous or handles its own async needs internally
-                window.calculatorApp.loadRecord(recordIndex); // Use the globally exposed function
+                console.log(`[Edit] Found record at index ${recordIndex} using UUID. Loading...`);
+                // Add a small delay to ensure dropdowns are fully populated
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await loadCalcRecord(recordIndex);
             } else {
-                console.error(`[Edit] Calculation ID ${calculationId} not found in fetched data.`);
-                alert(`Erro: Cálculo com ID ${calculationId} não encontrado para edição.`);
-                clearForm(); // Clear form if record not found
+                console.error(`[Edit] Calculation with UUID ${calculationUUID} not found in fetched data.`);
+                alert(`Erro: Cálculo com UUID ${calculationUUID} não encontrado para edição.`);
+                clearForm(); // Use the available clearForm function
             }
         } catch (error) {
              console.error(`[Edit] Error during edit process:`, error);
@@ -1840,49 +2339,53 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Function to handle Deleting a Generic Record --- 
-    const handleDeleteRecord = async (tableName, recordId) => {
-        console.log(`[Delete] Request to delete record ID: ${recordId} from table: ${tableName}`);
-        if (!tableName || !recordId) {
-             console.error('[Delete] Table name or Record ID missing.');
+    const handleDeleteRecord = async (tableName, recordUUID, displayId) => { // Accept UUID and Display ID
+        console.log(`[Delete] Request to delete record UUID: ${recordUUID} (Display ID: ${displayId}) from table: ${tableName}`);
+        if (!tableName || !recordUUID) {
+             console.error('[Delete] Table name or Record UUID missing.');
              alert('Erro: Não foi possível identificar o registo a eliminar.');
              return;
         }
 
-        // Use calculation_id for tabela_precos, otherwise assume 'id'
-        const idColumn = tableName === 'tabela_precos' ? 'calculation_id' : 'id';
+        // DB operation uses UUID ('id' column)
+        const idColumn = 'id'; 
 
-        if (confirm(`Tem a certeza que deseja eliminar o registo com ID ${recordId} da tabela ${tableName}? Esta ação não pode ser desfeita.`)) {
-            console.log(`[Delete] Confirmed deletion for ID: ${recordId} from ${tableName}`);
+        // Confirmation message uses the user-friendly display ID
+        const confirmationMessage = `Tem a certeza que deseja eliminar o registo com ID ${displayId || recordUUID} da tabela ${tableName}? Esta ação não pode ser desfeita.`;
+
+        if (confirm(confirmationMessage)) {
+            console.log(`[Delete] Confirmed deletion for UUID: ${recordUUID} from ${tableName}`);
             showLoading();
             try {
                 const { error } = await supabase
                     .from(tableName) // Use the actual table name
                     .delete()
-                    .eq(idColumn, recordId);
+                    .eq(idColumn, recordUUID); // Match using UUID
 
                 if (error) throw error;
 
-                console.log(`[Delete] Successfully deleted record ID: ${recordId} from ${tableName}`);
+                console.log(`[Delete] Successfully deleted record UUID: ${recordUUID} from ${tableName}`);
                 alert('Registo eliminado com sucesso!');
 
-                // Refresh the data for the current table
-                delete tableDataCache[tableName]; // Clear cache for this table
-                await fetchData(tableName); // Fetch fresh data
-                filterDataAndRender(tableName); // Re-render with fresh data
+                // Refresh the data for the CURRENTLY VIEWED table
+                console.log(`[Delete] Refreshing currently viewed section: ${currentSection}`);
+                delete tableDataCache[currentSection]; // Clear cache for the VISIBLE table
+                await fetchData(currentSection);      // Fetch fresh data for the VISIBLE table
+                filterDataAndRender(currentSection);  // Re-render the VISIBLE table
 
-                // Special case: if deleting from calculadora_materiais, also refresh calculator internal state
+                // Special case: if deleting from calculadora_materiais, ALSO refresh calculator internal state
                 if (tableName === 'calculadora_materiais') {
-                     await fetchAllCalculations();
+                     await fetchAllCalculations(); // Refresh the background calculator data
                 }
 
             } catch (error) {
-                console.error(`[Delete] Error deleting record ID ${recordId} from ${tableName}:`, error);
+                console.error(`[Delete] Error deleting record UUID ${recordUUID} from ${tableName}:`, error);
                 alert(`Erro ao eliminar o registo: ${error.message}`);
             } finally {
                 hideLoading();
             }
         } else {
-            console.log(`[Delete] Deletion cancelled for ID: ${recordId} from ${tableName}`);
+            console.log(`[Delete] Deletion cancelled for UUID: ${recordUUID} from ${tableName}`);
         }
     };
 
@@ -1894,15 +2397,26 @@ document.addEventListener('DOMContentLoaded', () => {
          console.log('[Calculator] Fetching all calculations...');
          try {
              const { data, error } = await supabase.from('calculadora_materiais').select('*').order('calculation_id', { ascending: true });
-             if (error) throw error;
+             if (error) {
+                 console.error('[Calculator] Error fetching calculations:', error);
+                 throw error;
+             }
+             
              allCalculations = data || []; // Update the globally accessible variable
              console.log(`[Calculator] Fetched ${allCalculations.length} calculations.`);
+             if (allCalculations.length > 0) {
+                 // Log a few sample records to help with debugging
+                 console.log('[Calculator] Sample records:', JSON.stringify(allCalculations.slice(0, 3)));
+                 console.log('[Calculator] ID property names:', Object.keys(allCalculations[0]).filter(key => key.includes('id')));
+             } else {
+                 console.warn('[Calculator] No calculation records found in database.');
+             }
              // Reset index and clear form needs to happen within calculator's context if needed
              // currentCalcRecordIndex = -1;
              // clearForm(false);
              // updateCalcNavigation();
          } catch (err) {
-            console.error('Exception fetching calculations:', err);
+            console.error('[Calculator] Exception fetching calculations:', err);
             // Avoid alert here, let the calling function handle UI feedback if needed
             // alert('Erro ao carregar cálculos existentes.'); 
             allCalculations = []; // Ensure it's an empty array on error
