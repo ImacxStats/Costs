@@ -311,11 +311,10 @@ canvas {
 
 /* Filter styles */
 .filter-container {
-    margin-bottom: 15px;
-    padding: 15px;
     display: flex;
     align-items: center;
     gap: 10px;
+    margin-bottom: 20px;
 }
 
 .filter-container label {
@@ -394,34 +393,41 @@ canvas {
 }
 
 .material-dropdown,
-.machine-dropdown {
+.machine-dropdown,
+#maquina-select-edit { /* Apply styles to all relevant dropdowns */
     width: 100%;
-    padding: 0.6rem 0.8rem; /* Increased padding */
+    padding: 0.6rem 0.8rem;
+    background-color: rgba(0, 0, 0, 0.2); /* Dark background */
+    color: var(--text-primary); /* Light text */
     border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(0, 0, 0, 0.2); /* Darker input background */
-    color: var(--text-primary); /* Use primary text color */
     border-radius: 5px;
-    font-size: 0.9rem;
-    appearance: none; /* Remove default arrow */
-    background-image: url('data:image/svg+xml;utf8,<svg fill="%23a0a0a0" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z" /><path d="M0 0h24v24H0z" fill="none" /></svg>'); /* Custom arrow */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    /* Custom white arrow */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ffffff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22/%3E%3C/svg%3E');
     background-repeat: no-repeat;
-    background-position: right 0.7rem center;
-    background-size: 1.2em;
+    background-position: right 0.7em top 50%, 0 0;
+    background-size: 0.65em auto, 100%;
     cursor: pointer;
+    font-size: 0.9rem;
 }
 
 .material-dropdown:disabled,
-.machine-dropdown:disabled {
-    opacity: 0.5;
+.machine-dropdown:disabled,
+#maquina-select-edit:disabled { /* Style disabled state for all */
+    background-color: rgba(0, 0, 0, 0.1);
+    color: var(--text-secondary);
     cursor: not-allowed;
-    background-image: none; /* Hide arrow when disabled */
+    border-color: rgba(255, 255, 255, 0.1);
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22/%3E%3C/svg%3E'); /* Grey arrow */
 }
 
-.material-dropdown:focus,
-.machine-dropdown:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 5px var(--accent-glow);
+.material-dropdown option,
+.machine-dropdown option,
+#maquina-select-edit option { /* Style options for all */
+    background-color: var(--surface-color); /* Dark background for options */
+    color: var(--text-primary); /* Light text for options */
 }
 
 .material-price,
@@ -678,11 +684,9 @@ canvas {
 /* Record Navigation Styles */
 .record-navigation {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--glass-border);
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .nav-button {
@@ -818,31 +822,33 @@ canvas {
 }
 
 #maquina-select-edit {
-    flex-grow: 1; /* Allow select to take available space */
+    flex-grow: 1;
     padding: 0.6rem 0.8rem;
+    background-color: rgba(0, 0, 0, 0.2); /* Existing dark background */
+    color: var(--text-primary); /* Ensure text is light */
     border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(0, 0, 0, 0.2);
-    color: var(--text-primary);
     border-radius: 5px;
-    font-size: 0.9rem;
-    appearance: none; /* Remove default arrow */
-    background-image: url('data:image/svg+xml;utf8,<svg fill="%23a0a0a0" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z" /><path d="M0 0h24v24H0z" fill="none" /></svg>');
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ffffff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22/%3E%3C/svg%3E');
     background-repeat: no-repeat;
-    background-position: right 0.7rem center;
-    background-size: 1.2em;
+    background-position: right 0.7em top 50%, 0 0;
+    background-size: 0.65em auto, 100%;
     cursor: pointer;
 }
 
-#maquina-select-edit:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 5px var(--accent-glow);
-}
+/* Style for the options within the dropdown */
+/* This specific rule is now covered by the combined rule above */
+/* #maquina-select-edit option { */
+/*    background-color: var(--surface-color); */
+/*    color: var(--text-primary); */
+/* } */
 
 .maquina-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem; /* Space between input groups */
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
     margin-bottom: 2rem;
 }
 
@@ -884,4 +890,126 @@ canvas {
 #maquina-novo-button { /* Style for the 'Novo' button */
     padding: 8px 12px;
     font-size: 0.9em;
+}
+
+.top-actions-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 20px;
+}
+
+.main-actions {
+    display: flex;
+    gap: 15px; /* Increased gap between buttons */
+    align-items: center;
+    padding: 5px; /* Added padding around the buttons */
+}
+
+.main-actions .nav-button,
+.main-actions .save-button {
+    min-width: 120px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .top-actions-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .main-actions {
+        justify-content: space-between;
+    }
+    
+    .record-navigation {
+        justify-content: space-between;
+    }
+}
+
+/* --- Table Action Buttons --- */
+.action-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 6px;
+    margin: 0 3px;
+    color: var(--text-secondary);
+    transition: color 0.2s ease;
+    border-radius: 4px; /* Slightly rounded corners */
+}
+
+.action-button:hover {
+    color: var(--accent-color); /* Highlight with accent color on hover */
+    background-color: rgba(255, 127, 0, 0.1); /* Subtle background on hover */
+}
+
+.action-button i {
+    vertical-align: middle; /* Align icons better */
+    width: 16px; /* Consistent icon size */
+    height: 16px;
+}
+
+/* Specific colors on hover for clarity */
+.edit-button:hover {
+    color: #4CAF50; /* Green for edit */
+    background-color: rgba(76, 175, 80, 0.1);
+}
+
+.delete-button:hover {
+    color: #F44336; /* Red for delete */
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+/* --- Filters (Dropdown & Search) --- */
+#tabela_precos-section .filter-container {
+    /* Specific styles for the search container if needed,
+       but the general flexbox above should work. */
+}
+
+#tabela_precos-search-input {
+    flex-grow: 1; /* Allow input to take available space */
+    padding: 8px 12px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.9em;
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#tabela_precos-search-input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+#tabela_precos-search-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.search-button {
+    padding: 6px 10px;
+    background-color: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--accent-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    display: inline-flex; /* Align icon properly */
+    align-items: center;
+    justify-content: center;
+}
+
+.search-button:hover {
+    background-color: rgba(255, 127, 0, 0.1);
+    border-color: var(--accent-color);
+}
+
+.search-button svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
 }

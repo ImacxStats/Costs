@@ -216,14 +216,24 @@
                 <h2>Calculadora de Materiais</h2>
                 <div class="section-content">
                     <div class="calculator-container glassmorphism">
-                        <!-- Record Navigation -->
-                        <div class="record-navigation">
-                            <button id="prev-record" class="nav-button"><i data-feather="arrow-left"></i> Anterior</button>
-                            <span id="record-indicator">- / -</span>
-                            <button id="next-record" class="nav-button">Próximo <i data-feather="arrow-right"></i></button>
-                            <div class="search-record">
-                                <input type="number" id="search-calc-id" placeholder="Buscar ID...">
-                                <button id="search-button" class="nav-button"><i data-feather="search"></i></button>
+                        <!-- Top Actions Bar -->
+                        <div class="top-actions-bar">
+                            <div class="record-navigation">
+                                <button id="prev-record" class="nav-button"><i data-feather="arrow-left"></i> Anterior</button>
+                                <span id="record-indicator">- / -</span>
+                                <button id="next-record" class="nav-button">Próximo <i data-feather="arrow-right"></i></button>
+                                <div class="search-record">
+                                    <input type="number" id="search-calc-id" placeholder="Buscar ID...">
+                                    <button id="search-button" class="nav-button"><i data-feather="search"></i></button>
+                                </div>
+                            </div>
+                            <div class="main-actions">
+                                <button id="new-calculation" class="nav-button">
+                                    <i data-feather="plus"></i> Novo Cálculo
+                                </button>
+                                <button id="save-calculation" class="save-button">
+                                    <i data-feather="save"></i> Guardar Cálculo
+                                </button>
                             </div>
                         </div>
 
@@ -365,17 +375,11 @@
                             </div>
                         </div>
 
-                        <!-- Notes & Save Button -->
-                        <div class="notes-save-section">
+                        <!-- Notes Section (moved up, save button removed) -->
+                        <div class="notes-section">
                              <div class="notes-input">
                                 <h3>Notas</h3>
                                 <textarea name="notes" placeholder="Adicione observações sobre este cálculo..." rows="3"></textarea>
-                            </div>
-                            <div class="save-section">
-                                <button id="save-calculation" class="save-button">
-                                    <i data-feather="save"></i>
-                                    Guardar Cálculo
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -386,6 +390,10 @@
             <section id="tabela_precos-section" class="data-section">
                 <h2>Tabela de Preços</h2>
                 <div class="section-content">
+                    <div class="filter-container glassmorphism"> 
+                        <input type="text" id="tabela_precos-search-input" placeholder="Buscar por material ou ID...">
+                        <button id="tabela_precos-search-button" class="search-button"><i data-feather="search"></i></button>
+                    </div>
                     <div class="table-container glassmorphism">
                         <table id="tabela_precos-table">
                             <thead>

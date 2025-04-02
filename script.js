@@ -10,6 +10,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create a separate client with service role key for operations that need elevated privileges
     // const supabaseAdmin = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY); // Removed
 
+    // Global calculator object to expose functions
+    window.calculatorApp = {
+        loadRecord: null,
+        clearForm: null,
+        fetchAllCalculations: null,
+        updateCalculations: null
+    };
+
     // Initialize auth state
     const initializeAuth = async () => {
         try {
@@ -41,6 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const dataSections = document.querySelectorAll('.data-section');
     const loadingIndicator = document.getElementById('loading-indicator');
     const materialFilters = document.querySelectorAll('.material-filter');
+    // Add references for the new search elements
+    // const materiaisImpressaoSearchInput = document.getElementById('materiais_impressao-search-input');
+    // const materiaisImpressaoSearchButton = document.getElementById('materiais_impressao-search-button');
+    // ADD references for tabela_precos search elements
+    const tabelaPrecosSearchInput = document.getElementById('tabela_precos-search-input');
+    const tabelaPrecosSearchButton = document.getElementById('tabela_precos-search-button');
 
     // --- Estado ---
     let currentSection = 'materiais_impressao'; // Seção inicial
@@ -49,6 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let tableFilteredData = {}; // Cache para dados filtrados
     let sortState = {}; // Armazena estado de ordenação por tabela { tableName: { column: 'col_name', direction: 'asc' | 'desc' } }
     let filterState = {}; // Armazena estado de filtro por tabela { tableName: { material: 'value' } }
+    let allCalculations = [];
+    // Add state for search term
+    let searchState = {}; // Armazena estado de busca por tabela { tableName: { term: 'value' } }
 
     // --- Constantes e Configurações ---
     const ACCENT_COLOR = '#FF7F00';
@@ -136,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 { 
                     key: 'material_descricao',
                     label: 'Materiais',
-                    // Custom render function to combine fields
                     render: (row) => {
                         let desc = [];
                         if (row.material1_material) desc.push(`${row.material1_material} (${row.material1_caracteristica || ''}, ${row.material1_cor || ''})`);
@@ -147,9 +163,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 { key: 'margem_percentual', label: 'Margem %', type: 'percentage', align: 'right' },
                 { key: 'preco_atual', label: 'Preço Atual', type: 'currency', align: 'right' },
-                { key: 'preco_final', label: 'Preço Final (Calculado)', type: 'currency', align: 'right' }
+                { key: 'preco_final', label: 'Preço Final (Calculado)', type: 'currency', align: 'right' },
+                // Add actions column
+                { 
+                    key: 'actions', 
+                    label: 'Ações', 
+                    align: 'center', 
+                    sortable: false, // Actions column is not sortable
+                    render: (row) => {
+                        return `
+                            <button class="action-button edit-button" data-id="${row.calculation_id}" title="Editar Cálculo">
+                                <i data-feather="edit"></i>
+                            </button>
+                            <button class="action-button delete-button" data-id="${row.calculation_id}" title="Eliminar Cálculo">
+                                <i data-feather="trash-2"></i>
+                            </button>
+                        `;
+                    }
+                }
             ],
-            // No charts for this table
             charts: [] 
         }
     };
@@ -414,7 +446,9 @@ document.addEventListener('DOMContentLoaded', () => {
         tableBody.innerHTML = '';
 
         if (!data || data.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="${config.columns.length}" style="text-align:center;">Sem dados para mostrar.</td></tr>`;
+            // Update colspan calculation to include the new actions column if it exists
+            const colspan = config.columns.length; 
+            tableBody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;">Sem dados para mostrar.</td></tr>`;
             return;
         }
 
@@ -423,17 +457,21 @@ document.addEventListener('DOMContentLoaded', () => {
         config.columns.forEach(col => {
             const th = document.createElement('th');
             th.textContent = col.label;
-            th.dataset.column = col.key;
             if (col.align) {
                 th.style.textAlign = col.align;
             }
-            // Add sorting indicator span
-            const sortIndicator = document.createElement('span');
-            sortIndicator.className = 'sort-indicator';
-            th.appendChild(sortIndicator);
             
-            // Add sorting click listener
-            th.addEventListener('click', () => handleSort(tableName, col.key));
+            // Only add sorting functionality if the column is sortable
+            if (col.sortable !== false) { 
+                th.dataset.column = col.key;
+                const sortIndicator = document.createElement('span');
+                sortIndicator.className = 'sort-indicator';
+                th.appendChild(sortIndicator);
+                th.addEventListener('click', () => handleSort(tableName, col.key));
+                th.style.cursor = 'pointer'; // Indicate sortable
+            } else {
+                 th.style.cursor = 'default'; // Indicate non-sortable
+            }
             headerRow.appendChild(th);
         });
         tableHead.appendChild(headerRow);
@@ -445,15 +483,15 @@ document.addEventListener('DOMContentLoaded', () => {
             config.columns.forEach(col => {
                 const td = document.createElement('td');
                 let cellValue;
+                
                 // Use custom render function if provided
                 if (col.render && typeof col.render === 'function') {
                     cellValue = col.render(row);
+                    td.innerHTML = cellValue; // Render function provides HTML
                 } else {
                     cellValue = row[col.key];
+                    td.innerHTML = formatValue(cellValue, col.type); // Format standard values
                 }
-                
-                // Format value based on type, unless custom render handled it
-                td.innerHTML = col.render ? cellValue : formatValue(cellValue, col.type);
                 
                 if (col.align) {
                     td.style.textAlign = col.align;
@@ -463,7 +501,12 @@ document.addEventListener('DOMContentLoaded', () => {
             tableBody.appendChild(tr);
         });
         
-        //console.log(`Table rendered for ${tableName}`);
+        // Re-initialize Feather Icons for the newly added buttons
+        feather.replace(); 
+
+        // Add event listener for action buttons (using delegation)
+        tableBody.removeEventListener('click', handleTableActions); // Remove previous listener if any
+        tableBody.addEventListener('click', handleTableActions); 
     };
 
      const handleSort = (tableName, columnKey) => {
@@ -803,7 +846,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         resetCalculatorState(); // Initialize state
         
-        let allCalculations = [];
         let currentCalcRecordIndex = -1;
 
         // --- Calculator helper functions (defined within initializeCalculator scope) ---
@@ -830,19 +872,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // --- Record Navigation Functions ---
-        const fetchAllCalculations = async () => {
-             console.log('[Calculator] Fetching all calculations...');
-             try {
-                 const { data, error } = await supabase.from('calculadora_materiais').select('*').order('calculation_id', { ascending: true });
-                 if (error) throw error;
-                 allCalculations = data || [];
-                 console.log(`[Calculator] Fetched ${allCalculations.length} calculations.`);
-                 currentCalcRecordIndex = -1;
-                 clearForm(false);
-                 updateCalcNavigation();
-             } catch (err) { console.error('Exception fetching calculations:', err); alert('Erro ao carregar cálculos existentes.'); }
-        };
-
         const updateCalcNavigation = () => {
              if (!recordIndicator || !prevButton || !nextButton) return;
              const totalRecords = allCalculations.length;
@@ -854,7 +883,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         const loadCalcRecord = async (index) => {
-            if (index < 0 || index >= allCalculations.length) { console.warn(`[Calculator] Invalid index: ${index}`); clearForm(); return; }
+            if (index < 0 || index >= allCalculations.length) {
+                console.warn(`[Calculator] Invalid index: ${index}`);
+                clearForm(); return;
+            }
             currentCalcRecordIndex = index;
             const record = allCalculations[index];
             console.log(`[Calculator] Loading record ${index}:`, record);
@@ -1037,7 +1069,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  const savedIndex = allCalculations.findIndex(c => c.calculation_id === savedData.calculation_id);
                  if (savedIndex !== -1) { loadCalcRecord(savedIndex); } else { clearForm(); }
              } catch (error) { console.error('Error saving calc:', error); alert(`Erro ao guardar: ${error.message}`); }
-             finally { saveButton.disabled = false; saveButton.textContent = 'Guardar Cálculo'; feather.replace(); } // Ensure icon is restored
+             finally { saveButton.disabled = false; saveButton.textContent = 'Guardar Cálculo'; feather.replace(); }
          };
 
         // --- Search Function ---
@@ -1051,12 +1083,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Event Listeners Setup ---
         prevButton.addEventListener('click', () => {
              if (currentCalcRecordIndex > 0) { loadCalcRecord(currentCalcRecordIndex - 1); } 
-             else if (currentCalcRecordIndex <= 0) { if (allCalculations.length > 0) loadCalcRecord(allCalculations.length - 1); else clearForm(); } // Wrap to last from first or new
+             else if (currentCalcRecordIndex <= 0) { if (allCalculations.length > 0) loadCalcRecord(allCalculations.length - 1); else clearForm(); }
         });
         nextButton.addEventListener('click', () => {
-             if (currentCalcRecordIndex === -1) { if (allCalculations.length > 0) loadCalcRecord(0); } // Go to first from new
-             else if (currentCalcRecordIndex < allCalculations.length - 1) { loadCalcRecord(currentCalcRecordIndex + 1); } 
-             else { clearForm(); } // Wrap to new from last
+             if (currentCalcRecordIndex === -1) { if (allCalculations.length > 0) loadCalcRecord(0); }
+             else if (currentCalcRecordIndex < allCalculations.length - 1) { loadCalcRecord(currentCalcRecordIndex + 1); }
+             else { clearForm(); }
         });
          clearMaterialButtons.forEach(button => { button.addEventListener('click', () => { clearMaterialSection(parseInt(button.dataset.materialNum)); }); });
          clearMachineButton.addEventListener('click', () => clearMachineSection());
@@ -1075,10 +1107,29 @@ document.addEventListener('DOMContentLoaded', () => {
          saveButton.addEventListener('click', saveCalculation);
 
         // --- Initial Load for Calculator ---
-        initializeDropdowns().then(fetchAllCalculations);
+        initializeDropdowns().then(() => {
+            fetchAllCalculations().catch(err => {
+                console.error("Initial fetch for calculator failed:", err);
+                alert('Falha ao carregar cálculos iniciais.');
+            }).finally(() => {
+                 updateCalcNavigation(); 
+            });
+        });
 
         sectionElement.classList.add('calculator-initialized');
         console.log('[Calculator] Initialized successfully.');
+
+        // Add event listener for new calculation button
+        document.getElementById('new-calculation').addEventListener('click', () => {
+            clearForm(false);
+            document.getElementById('record-indicator').textContent = 'Novo Cálculo';
+        });
+
+        // Expose calculator functions globally through calculatorApp
+        window.calculatorApp.loadRecord = loadCalcRecord;
+        window.calculatorApp.clearForm = clearForm;
+        window.calculatorApp.fetchAllCalculations = fetchAllCalculations;
+        window.calculatorApp.updateCalculations = updateCalculations;
     };
 
     // --- Funções Específicas da Seção Máquinas ---
@@ -1105,7 +1156,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? `Nova / ${totalRecords}` 
                 : `${currentMaquinaRecordIndex + 1} / ${totalRecords}`;
             maquinaSelect.disabled = false;
-            // Update select, maintaining selection if possible
             const currentSelection = maquinaSelect.value;
             maquinaSelect.innerHTML = '<option value="">Selecionar/Nova Máquina</option>';
             allMaquinasData.forEach((maquina, index) => {
@@ -1117,14 +1167,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 maquinaSelect.appendChild(option);
             });
-            // If loading a specific record, make sure it's selected
             if (currentMaquinaRecordIndex !== -1 && allMaquinasData[currentMaquinaRecordIndex]) {
                  maquinaSelect.value = allMaquinasData[currentMaquinaRecordIndex].id;
             }
         }
-        maquinaPrevButton.disabled = currentMaquinaRecordIndex <= 0 && totalRecords > 0; // Disabled only if at first record
+        maquinaPrevButton.disabled = currentMaquinaRecordIndex <= 0 && totalRecords > 0;
         maquinaNextButton.disabled = currentMaquinaRecordIndex === -1 || currentMaquinaRecordIndex >= totalRecords - 1;
-        feather.replace(); // Update icons
+        feather.replace();
     };
 
     const populateMaquinaSelectAndFetchAll = async () => {
@@ -1133,26 +1182,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const { data, error } = await supabase
                 .from('maquinas')
                 .select('*')
-                .order('maquina', { ascending: true }); // Order by name
+                .order('maquina', { ascending: true });
             if (error) throw error;
             allMaquinasData = data || [];
             console.log(`[Maquinas] Fetched ${allMaquinasData.length} machines.`);
-            currentMaquinaRecordIndex = -1; // Reset index
-            clearMaquinaForm(false); // Clear form without updating nav yet
-            updateMaquinaNavigation(); // Now update navigation and select options
-            if (maquinaStatus) maquinaStatus.textContent = ''; // Clear status
+            currentMaquinaRecordIndex = -1;
+            clearMaquinaForm(false);
+            updateMaquinaNavigation();
+            if (maquinaStatus) maquinaStatus.textContent = '';
         } catch (error) {
             console.error('Error fetching maquinas:', error);
             if (maquinaStatus) { maquinaStatus.textContent = 'Erro ao carregar máquinas.'; maquinaStatus.style.color = NEGATIVE_COLOR; }
             allMaquinasData = [];
-            updateMaquinaNavigation(); // Update nav to show error state
+            updateMaquinaNavigation();
         }
     };
 
     const loadMaquinaRecord = (index) => {
         if (index < 0 || index >= allMaquinasData.length) {
             console.warn(`[Maquinas] Invalid index: ${index}`);
-            clearMaquinaForm(); // Clear form and go to 'new' state
+            clearMaquinaForm();
             return;
         }
         currentMaquinaRecordIndex = index;
@@ -1167,9 +1216,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (maquinaForm) maquinaForm.reset();
         currentEditingMaquinaId = null;
         currentMaquinaRecordIndex = -1;
-        if (maquinaStatus) maquinaStatus.textContent = ''; // Clear status message
-        document.getElementById('maquina-id-display').textContent = 'Novo Registo'; // Indicate new record
-        maquinaSelect.value = ''; // Reset dropdown selection
+        if (maquinaStatus) maquinaStatus.textContent = '';
+        document.getElementById('maquina-id-display').textContent = 'Novo Registo';
+        maquinaSelect.value = '';
         if (updateNav) updateMaquinaNavigation();
     };
 
@@ -1177,9 +1226,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!maquinaForm || !maquinaData) return;
         maquinaForm.elements['maquina'].value = maquinaData.maquina || '';
         maquinaForm.elements['valor_m2'].value = maquinaData.valor_m2 || '';
-        document.getElementById('maquina-id-display').textContent = `ID: ${maquinaData.id}`; // Display ID
-        currentEditingMaquinaId = maquinaData.id; // Set the ID being edited
-        if (maquinaStatus) maquinaStatus.textContent = ''; // Clear status on load
+        document.getElementById('maquina-id-display').textContent = `ID: ${maquinaData.id}`;
+        currentEditingMaquinaId = maquinaData.id;
+        if (maquinaStatus) maquinaStatus.textContent = '';
     };
 
     const handleSaveMaquina = async (event) => {
@@ -1190,10 +1239,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(maquinaForm);
         const maquinaData = Object.fromEntries(formData.entries());
 
-        // Convert valor_m2 to number
         maquinaData.valor_m2 = maquinaData.valor_m2 ? parseFloat(maquinaData.valor_m2) : null;
         
-        // Remove the ID if it was part of the form for display purposes but shouldn't be sent
         delete maquinaData.id; 
 
         const saveButton = maquinaForm.querySelector('button[type="submit"]');
@@ -1203,7 +1250,6 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             let savedData, error;
             if (currentEditingMaquinaId) {
-                // Update existing record
                 console.log('[Maquinas] Updating record ID:', currentEditingMaquinaId, 'with data:', maquinaData);
                 ({ data: savedData, error } = await supabase
                     .from('maquinas')
@@ -1212,7 +1258,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     .select()
                     .single());
             } else {
-                // Insert new record
                 console.log('[Maquinas] Inserting new record with data:', maquinaData);
                 ({ data: savedData, error } = await supabase
                     .from('maquinas')
@@ -1226,13 +1271,12 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('[Maquinas] Save successful:', savedData);
             if (maquinaStatus) { maquinaStatus.textContent = 'Máquina guardada com sucesso!'; maquinaStatus.style.color = POSITIVE_COLOR; }
             
-            // Refresh data and find the index of the saved record
             await populateMaquinaSelectAndFetchAll();
             const savedIndex = allMaquinasData.findIndex(m => m.id === savedData.id);
             if (savedIndex !== -1) {
-                loadMaquinaRecord(savedIndex); // Load the saved record into the form
+                loadMaquinaRecord(savedIndex);
             } else {
-                clearMaquinaForm(); // Should not happen, but clear if record not found after refresh
+                clearMaquinaForm();
             }
 
         } catch (error) {
@@ -1247,23 +1291,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentMaquinaRecordIndex > 0) {
             loadMaquinaRecord(currentMaquinaRecordIndex - 1);
         } else if (currentMaquinaRecordIndex <= 0 && allMaquinasData.length > 0) {
-            // Wrap to last record from first or 'new'
             loadMaquinaRecord(allMaquinasData.length - 1); 
         } else {
-            clearMaquinaForm(); // Stay on 'new' if no records
+            clearMaquinaForm();
         }
     };
 
     const handleMaquinaNext = () => {
         if (currentMaquinaRecordIndex === -1) {
-             // From 'new' state, go to the first record if available
              if (allMaquinasData.length > 0) {
                  loadMaquinaRecord(0);
              }
         } else if (currentMaquinaRecordIndex < allMaquinasData.length - 1) {
             loadMaquinaRecord(currentMaquinaRecordIndex + 1);
         } else {
-            // Wrap around from last record to 'new' state
             clearMaquinaForm();
         }
     };
@@ -1271,15 +1312,14 @@ document.addEventListener('DOMContentLoaded', () => {
      const handleMaquinaSelectChange = (event) => {
         const selectedId = event.target.value;
         if (selectedId) {
-            const index = allMaquinasData.findIndex(m => m.id == selectedId); // Use == for type coercion just in case
+            const index = allMaquinasData.findIndex(m => m.id == selectedId);
             if (index !== -1) {
                 loadMaquinaRecord(index);
             } else {
                 console.warn(`[Maquinas] Selected ID ${selectedId} not found in data.`);
-                clearMaquinaForm(); // Go to new if ID mismatch (shouldn't happen)
+                clearMaquinaForm();
             }
         } else {
-            // 'Selecionar/Nova Máquina' selected
             clearMaquinaForm();
         }
     };
@@ -1289,23 +1329,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const sectionElement = document.getElementById('maquinas-section');
         if (sectionElement.classList.contains('maquinas-initialized')) {
             console.log('[Maquinas] Already initialized.');
-            // Potentially just update navigation if needed, but fetch should handle it
              updateMaquinaNavigation();
             return;
         }
 
-        // Attach event listeners only once during initialization
         if (maquinaForm) maquinaForm.addEventListener('submit', handleSaveMaquina);
         if (maquinaPrevButton) maquinaPrevButton.addEventListener('click', handleMaquinaPrev);
         if (maquinaNextButton) maquinaNextButton.addEventListener('click', handleMaquinaNext);
         if (maquinaSelect) maquinaSelect.addEventListener('change', handleMaquinaSelectChange);
         
-        // Add listener for the 'Novo' button
         if (maquinaNovoButton) {
             maquinaNovoButton.addEventListener('click', () => clearMaquinaForm());
         }
 
-        // Initial data fetch and population
         await populateMaquinaSelectAndFetchAll();
 
         sectionElement.classList.add('maquinas-initialized');
@@ -1314,63 +1350,86 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Fim das Funções Específicas da Seção Máquinas ---
 
     // --- Funções de Navegação e Inicialização --- 
-    // (Make sure this is the ONLY definition)
     const switchSection = async (targetSection) => {
         if (targetSection === currentSection && document.getElementById(`${targetSection}-section`)?.classList.contains('active-section')) {
-            hideLoading(); return; 
+            console.log(`Already on section: ${targetSection}`);
+            hideLoading(); 
+            return; 
         }
+        
         console.log(`Switching to section: ${targetSection}`);
         currentSection = targetSection;
         showLoading(); 
+        
         sidebarLinks.forEach(link => { link.classList.toggle('active', link.dataset.section === targetSection); });
         dataSections.forEach(section => { section.classList.remove('active-section'); });
-
         const sectionElement = document.getElementById(`${targetSection}-section`);
-        if (sectionElement) {
-            sectionElement.classList.add('active-section');
-            Object.keys(chartInstances).forEach(destroyChart); // Destroy charts from previous section
-            const config = TABLE_CONFIG[targetSection];
+        if (!sectionElement) {
+            console.error(`Section element not found: ${targetSection}`); 
+            hideLoading(); 
+            return;
+        }
+        sectionElement.classList.add('active-section');
+        Object.keys(chartInstances).forEach(destroyChart);
 
-            try {
-                if (targetSection === 'maquinas') {
-                    await initializeMaquinasSection(); 
-                } else if (targetSection === 'calculadora') {
-                    // --- Call Calculator Initialization if not already done ---
-                    if (!sectionElement.classList.contains('calculator-initialized')) {
-                        initializeCalculator(); 
-                    } else {
-                        console.log('Calculator already initialized.');
-                        // Optionally, could call updateCalcNavigation() here if needed and accessible
-                    }
-                } else if (targetSection === 'tabela_precos') {
-                   const data = tableDataCache[targetSection] || await fetchData(targetSection);
-                   if (data) { renderTable(targetSection, data); updateSortIndicators(targetSection); } 
-                   else { const tb = document.querySelector(`#${targetSection}-table tbody`); if (tb) tb.innerHTML = `<tr><td colspan="100">Erro.</td></tr>`; }
-                } else { // Other data sections
-                    if (!config) { console.error(`Config not found: ${targetSection}`); hideLoading(); return; }
-                    const data = tableDataCache[targetSection] || await fetchData(targetSection);
-                    if (data) {
-                        const currentFilter = filterState[targetSection]?.material || 'all';
-                        if (config.columns.some(col => col.key === 'material')) {
-                            setupFilters(targetSection, data);
-                            const filterSelect = document.getElementById(`${targetSection}-filter`);
-                            if (filterSelect) filterSelect.value = currentFilter;
-                        }
-                        applyFilter(targetSection, currentFilter);
-                        updateSortIndicators(targetSection);
-                    } else {
-                        console.error(`Failed data load for ${targetSection}.`);
-                        const tb = document.querySelector(`#${targetSection}-table tbody`); if (tb) tb.innerHTML = `<tr><td colspan="100">Erro.</td></tr>`;
-                        if (config.charts) config.charts.forEach(type => destroyChart(`${targetSection}-chart-${type}`));
-                    }
+        try {
+            if (targetSection === 'maquinas') {
+                await initializeMaquinasSection(); 
+            } else if (targetSection === 'calculadora') {
+                if (!sectionElement.classList.contains('calculator-initialized')) {
+                    initializeCalculator(); 
+                } else {
+                    console.log('Calculator already initialized. Ensuring data is fresh.');
+                    await fetchAllCalculations();
+                    updateCalcNavigation();
                 }
-            } catch (error) { console.error(`Error loading ${targetSection}:`, error); } 
-            finally { hideLoading(); }
-        } else { console.error(`Section element not found: ${targetSection}`); hideLoading(); }
+            } else {
+                 const config = TABLE_CONFIG[targetSection];
+                 if (!config) {
+                     console.error(`Config not found for standard section: ${targetSection}`); 
+                     hideLoading(); 
+                     return; 
+                 }
+                 
+                 const data = tableDataCache[targetSection] || await fetchData(targetSection);
+                 
+                 if (data) {
+                     tableDataCache[targetSection] = data;
+                     
+                     const currentFilterValue = filterState[targetSection]?.material || 'all';
+                     
+                     const hasMaterialColumn = config.columns.some(col => col.key === 'material');
+                     if (hasMaterialColumn) {
+                         setupFilters(targetSection, data);
+                         const filterSelect = document.getElementById(`${targetSection}-filter`);
+                         if (filterSelect) filterSelect.value = currentFilterValue;
+                     }
+                     
+                     applyFilter(targetSection, currentFilterValue); 
+                     updateSortIndicators(targetSection);
+                     
+                 } else {
+                     console.error(`Failed data load or no data for ${targetSection}.`);
+                     const tableBody = document.querySelector(`#${targetSection}-table tbody`); 
+                     if (tableBody) { 
+                         const colspan = config.columns.length || 1;
+                         tableBody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center; color: ${NEGATIVE_COLOR};">Erro ao carregar dados.</td></tr>`;
+                     } else {
+                         console.error(`Table body not found for section ${targetSection} to display error.`);
+                     }
+                     // Destroy any lingering charts for this section
+                     if (config.charts) config.charts.forEach(type => destroyChart(`${targetSection}-chart-${type}`));
+                 }
+            }
+        } catch (error) {
+             console.error(`Error loading section ${targetSection}:`, error);
+             // Optionally display a general error message to the user
+        } finally {
+            hideLoading(); 
+        }
     };
 
     // --- Initialize sidebar link listeners ---
-    // (Make sure this is the ONLY definition)
     sidebarLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1390,27 +1449,261 @@ document.addEventListener('DOMContentLoaded', () => {
     if(initialSectionElement) initialSectionElement.classList.add('active-section');
     else console.error(`Initial element #${initialSection}-section not found!`);
 
+    // Simplified Initial Page Load: Just call switchSection
     (async () => { 
-        showLoading();
+        await switchSection(initialSection);
+    })();
+
+    // --- Function to handle actions within tables (Edit/Delete) ---
+    const handleTableActions = async (event) => {
+        const button = event.target.closest('.action-button');
+        if (!button) return; // Click wasn't on an action button
+
+        const id = button.dataset.id;
+        if (!id) {
+            console.error('Action button is missing data-id');
+            return;
+        }
+        const calculationId = parseInt(id);
+
+        if (button.classList.contains('edit-button')) {
+            handleEditCalculation(calculationId);
+        } else if (button.classList.contains('delete-button')) {
+            handleDeleteCalculation(calculationId);
+        }
+    };
+
+    // --- Function to handle Editing a Calculation ---
+    const handleEditCalculation = async (calculationId) => { // Make the function async
+        console.log(`[Edit] Request to edit calculation ID: ${calculationId}`);
         try {
-            if (initialSection === 'maquinas') { await initializeMaquinasSection(); }
-            else if (initialSection === 'calculadora') { initializeCalculator(); } // Initialize calculator
-            else if (initialSection === 'tabela_precos') {
-                const data = await fetchData(initialSection);
-                renderTable(initialSection, data); updateSortIndicators(initialSection);
-            } else { 
-                const config = TABLE_CONFIG[initialSection]; const data = await fetchData(initialSection);
-                if (data && config) {
-                    if (config.columns.some(col => col.key === 'material')) { setupFilters(initialSection, data); }
-                    applyFilter(initialSection, 'all'); updateSortIndicators(initialSection);
-                } else { 
-                     const tb = document.querySelector(`#${initialSection}-table tbody`); 
-                     if (tb) tb.innerHTML = `<tr><td colspan="100">Erro ao carregar dados iniciais.</td></tr>`; 
-                     else console.error(`Table body not found for initial section ${initialSection}`);
+            // Navigate to the calculator section and WAIT for it to finish loading
+            await switchSection('calculadora'); 
+            
+            // Now that the section is switched and likely initialized, find and load the record
+            // Ensure allCalculations is available (it should be fetched by initializeCalculator called within switchSection)
+            if (!allCalculations || allCalculations.length === 0) {
+                 console.warn('[Edit] allCalculations array is not populated yet or is empty after section switch.');
+                 // Maybe try fetching again explicitly if needed, though switchSection should handle it.
+                 await fetchAllCalculations(); // Explicitly fetch if might be needed
+                 if (!allCalculations || allCalculations.length === 0) {
+                     throw new Error('Não foi possível carregar os dados da calculadora.');
                  }
             }
-        } catch(err) { console.error("Initial load error:", err); } 
-        finally { hideLoading(); }
-    })();
+
+            const recordIndex = allCalculations.findIndex(calc => calc.calculation_id === calculationId);
+            if (recordIndex !== -1) {
+                console.log(`[Edit] Found record at index ${recordIndex}. Loading...`);
+                // loadCalcRecord is synchronous or handles its own async needs internally
+                window.calculatorApp.loadRecord(recordIndex); // Use the globally exposed function
+            } else {
+                console.error(`[Edit] Calculation ID ${calculationId} not found in fetched data.`);
+                alert(`Erro: Cálculo com ID ${calculationId} não encontrado para edição.`);
+                clearForm(); // Clear form if record not found
+            }
+        } catch (error) {
+             console.error(`[Edit] Error during edit process:`, error);
+             alert(`Erro ao editar cálculo: ${error.message || 'Erro desconhecido'}`);
+        }
+    };
+
+    // --- Function to handle Deleting a Calculation ---
+    const handleDeleteCalculation = async (calculationId) => {
+        console.log(`[Delete] Request to delete calculation ID: ${calculationId}`);
+        if (confirm(`Tem a certeza que deseja eliminar o cálculo com ID ${calculationId}? Esta ação não pode ser desfeita.`)) {
+            console.log(`[Delete] Confirmed deletion for ID: ${calculationId}`);
+            showLoading();
+            try {
+                const { error } = await supabase
+                    .from('calculadora_materiais')
+                    .delete()
+                    .eq('calculation_id', calculationId);
+
+                if (error) {
+                    throw error;
+                }
+
+                console.log(`[Delete] Successfully deleted calculation ID: ${calculationId}`);
+                alert('Cálculo eliminado com sucesso!');
+
+                // --- Modification Start ---
+                // Find the index of the deleted item in the cache
+                const activeTable = document.querySelector('.data-section.active-section')?.id?.replace('-section', '');
+                let itemRemovedFromCache = false;
+
+                if (activeTable === 'tabela_precos' && tableDataCache['tabela_precos']) {
+                    const indexToRemove = tableDataCache['tabela_precos'].findIndex(item => item.calculation_id === calculationId);
+                    
+                    if (indexToRemove !== -1) {
+                        // Remove the item from the cached array
+                        tableDataCache['tabela_precos'].splice(indexToRemove, 1);
+                        itemRemovedFromCache = true;
+                        console.log(`[Delete] Removed item with ID ${calculationId} from tableDataCache['tabela_precos']`);
+                        
+                        // Re-render the table with the modified cache
+                        renderTable('tabela_precos', tableDataCache['tabela_precos']);
+                    } else {
+                         console.warn(`[Delete] Item with ID ${calculationId} not found in tableDataCache['tabela_precos'] after deletion.`);
+                         // Optional: Force refetch if item not found in cache (fallback)
+                         delete tableDataCache['tabela_precos']; 
+                         await fetchData('tabela_precos');
+                         if (tableDataCache['tabela_precos']) {
+                            renderTable('tabela_precos', tableDataCache['tabela_precos']);
+                         } else {
+                            renderTable('tabela_precos', []);
+                         }
+                    }
+                } else if (activeTable === 'tabela_precos') {
+                     // Cache was empty or table not active, attempt refetch just in case
+                     console.log(`[Delete] Cache for 'tabela_precos' was initially empty or section not active. Refetching.`);
+                     delete tableDataCache['tabela_precos']; 
+                     await fetchData('tabela_precos');
+                      if (tableDataCache['tabela_precos']) {
+                        renderTable('tabela_precos', tableDataCache['tabela_precos']);
+                     } else {
+                        renderTable('tabela_precos', []);
+                     }
+                }
+                // --- Modification End ---
+
+
+                // Also refresh the calculator's data in the background (keep this)
+                await fetchAllCalculations(); 
+
+            } catch (error) {
+                console.error(`[Delete] Error deleting calculation ID ${calculationId}:`, error);
+                alert(`Erro ao eliminar o cálculo: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        } else {
+            console.log(`[Delete] Deletion cancelled for ID: ${calculationId}`);
+        }
+    };
+
+    // ---> Move fetchAllCalculations function definition here <----
+    const fetchAllCalculations = async () => {
+         console.log('[Calculator] Fetching all calculations...');
+         try {
+             const { data, error } = await supabase.from('calculadora_materiais').select('*').order('calculation_id', { ascending: true });
+             if (error) throw error;
+             allCalculations = data || []; // Update the globally accessible variable
+             console.log(`[Calculator] Fetched ${allCalculations.length} calculations.`);
+             // Reset index and clear form needs to happen within calculator's context if needed
+             // currentCalcRecordIndex = -1;
+             // clearForm(false);
+             // updateCalcNavigation();
+         } catch (err) {
+            console.error('Exception fetching calculations:', err);
+            // Avoid alert here, let the calling function handle UI feedback if needed
+            // alert('Erro ao carregar cálculos existentes.'); 
+            allCalculations = []; // Ensure it's an empty array on error
+            throw err; // Re-throw the error so the caller knows something went wrong
+        }
+    };
+
+    // --- Funções de Renderização e Filtragem ---
+
+    const filterDataAndRender = (tableName) => {
+        if (!tableDataCache[tableName]) return; // No data cached yet
+
+        const filterValue = filterState[tableName]?.material || 'all';
+        const searchTerm = (searchState[tableName]?.term || '').toLowerCase().trim(); // Get search term
+
+        let filteredData = tableDataCache[tableName];
+
+        // Apply dropdown filter (if applicable to this table)
+        const tableConfig = TABLE_CONFIG[tableName];
+        const hasMaterialFilter = tableConfig && tableConfig.columns.some(col => col.key === 'material') && document.getElementById(`${tableName}-filter`);
+        
+        if (hasMaterialFilter && filterValue !== 'all') {
+            filteredData = filteredData.filter(item => item.material === filterValue);
+        }
+
+        // Apply search term filter (if search term exists)
+        if (searchTerm) {
+            if (tableName === 'tabela_precos') {
+                // Specific search logic for Tabela de Preços (ID or Material Description)
+                 filteredData = filteredData.filter(item => {
+                    const idString = String(item.calculation_id);
+                    const materialDesc = tableConfig.columns.find(col => col.key === 'material_descricao').render(item).toLowerCase();
+                    return idString.includes(searchTerm) || materialDesc.includes(searchTerm);
+                 });
+            } else {
+                // Generic search logic for other tables
+                filteredData = filteredData.filter(item => {
+                    // Search across relevant text fields (adjust as needed)
+                    const searchFields = [item.tipo, item.material, item.caracteristica, item.cor];
+                    return searchFields.some(field => field && String(field).toLowerCase().includes(searchTerm));
+                });
+            }
+        }
+
+        tableFilteredData[tableName] = filteredData; // Update filtered cache
+        renderTable(tableName, filteredData);
+    };
+
+    // --- Event Listeners ---
+
+    // Navegação Sidebar
+    sidebarLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const section = link.dataset.section;
+            if (section) switchSection(section);
+            else console.warn('Link missing data-section');
+        });
+    });
+
+    // Filtros de Material (Dropdowns)
+    materialFilters.forEach(filterSelect => {
+        const tableName = filterSelect.id.replace('-filter', '');
+        filterSelect.addEventListener('change', (event) => {
+            filterState[tableName] = { material: event.target.value };
+            // Reset search term when dropdown changes? Optional, maybe keep search active
+            // searchState[tableName] = { term: '' };
+            // const searchInput = document.getElementById(`${tableName}-search-input`);
+            // if (searchInput) searchInput.value = '';
+            filterDataAndRender(tableName);
+        });
+    });
+
+    // Add Event Listener for Tabela de Preços Search Button
+    if (tabelaPrecosSearchButton && tabelaPrecosSearchInput) {
+        tabelaPrecosSearchButton.addEventListener('click', () => {
+            const tableName = 'tabela_precos';
+            searchState[tableName] = { term: tabelaPrecosSearchInput.value };
+            filterDataAndRender(tableName);
+        });
+
+        // Optional: Trigger search on Enter key press in the input field
+        tabelaPrecosSearchInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                const tableName = 'tabela_precos';
+                searchState[tableName] = { term: tabelaPrecosSearchInput.value };
+                filterDataAndRender(tableName);
+            }
+        });
+    }
+
+    // Add Event Listener for Table Actions (Edit/Delete) - **NEW LISTENER**
+    const mainContent = document.querySelector('main.content');
+    if (mainContent) {
+        mainContent.addEventListener('click', handleTableActions);
+    } else {
+        console.error("Could not find main content area to attach table action listener.");
+    }
+
+
+    // Ordenação das Tabelas
+    document.addEventListener('click', (event) => {
+        const target = event.target;
+        if (target.classList.contains('sort-indicator')) {
+            const column = target.closest('th').dataset.column;
+            //const direction = target.classList.contains('asc') ? 'asc' : 'desc'; // Direction logic handled in handleSort
+            handleSort(target.closest('table').id.replace('-table',''), column); // Pass table name and column
+        }
+        // Note: Moved action button handling to the specific listener above
+    });
 
 }); // Fim do DOMContentLoaded
