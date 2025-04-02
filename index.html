@@ -1,10 +1,291 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <meta http-equiv="refresh" content="0; url=code.html">
-    <title>Redirecting...</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMACX - Master Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <style>
+        /* Additional styles specific to the dashboard */
+        body {
+            position: relative;
+            overflow: hidden;
+            background-color: var(--bg-color);
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 35%, rgba(255, 127, 0, 0.15) 0%, transparent 25%),
+                        radial-gradient(circle at 80% 10%, rgba(255, 127, 0, 0.1) 0%, transparent 20%);
+            z-index: -1;
+        }
+
+        /* Animated background patterns */
+        .background-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.4;
+        }
+        
+        .pattern-grid {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .pattern-dot {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            border-radius: 50%;
+            background-color: rgba(255, 127, 0, 0.2);
+        }
+        
+        .master-dashboard {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .master-dashboard-header {
+            text-align: center;
+            padding: 40px 0;
+        }
+        
+        .master-dashboard-header h1 {
+            font-size: 2.5rem;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            text-shadow: 0 0 15px var(--accent-glow);
+        }
+        
+        .master-dashboard-header p {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            flex-grow: 1;
+        }
+        
+        .dashboard-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 250px;
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 20px var(--accent-glow);
+            border-color: var(--accent-color);
+        }
+        
+        .dashboard-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: var(--accent-color);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+        
+        .dashboard-card:hover::before {
+            transform: scaleX(1);
+        }
+        
+        .dashboard-card-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: var(--accent-color);
+        }
+        
+        .dashboard-card-icon svg {
+            width: 60px;
+            height: 60px;
+            stroke-width: 1.5;
+        }
+        
+        .dashboard-card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+        
+        .dashboard-card-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .dashboard-footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .master-dashboard-header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <p>Redirecionando para o dashboard...</p>
+    <!-- Animated background -->
+    <div class="background-pattern">
+        <div class="pattern-grid"></div>
+        <!-- Dots will be generated by JavaScript -->
+    </div>
+    
+    <div class="master-dashboard">
+        <header class="master-dashboard-header">
+            <h1>IMACX DASHBOARD</h1>
+            <p>Centro de Ferramentas de Gestão</p>
+        </header>
+        
+        <main class="dashboard-grid">
+            <!-- Calculadora de Custos Card -->
+            <a href="code.html" class="dashboard-card">
+                <div class="dashboard-card-icon">
+                    <i data-feather="dollar-sign"></i>
+                </div>
+                <h2 class="dashboard-card-title">CALCULADORA DE CUSTOS</h2>
+                <p class="dashboard-card-desc">Gestão de materiais e cálculo de preços</p>
+            </a>
+            
+            <!-- FSC Gestão Card -->
+            <a href="http://localhost:5173/inventory" class="dashboard-card">
+                <div class="dashboard-card-icon">
+                    <i data-feather="box"></i>
+                </div>
+                <h2 class="dashboard-card-title">FSC GESTÃO</h2>
+                <p class="dashboard-card-desc">Gestão de inventário e stock</p>
+            </a>
+            
+            <!-- Calculo Implementações Card -->
+            <a href="https://cost-calculator-app-delta.vercel.app/" class="dashboard-card">
+                <div class="dashboard-card-icon">
+                    <i data-feather="activity"></i>
+                </div>
+                <h2 class="dashboard-card-title">CALCULO IMPLEMENTAÇÕES</h2>
+                <p class="dashboard-card-desc">Cálculo de custos de implementação de projetos</p>
+            </a>
+            
+            <!-- Calculo Orçamentos Card (Dummy) -->
+            <a href="#" class="dashboard-card">
+                <div class="dashboard-card-icon">
+                    <i data-feather="file-text"></i>
+                </div>
+                <h2 class="dashboard-card-title">CALCULO ORÇAMENTOS</h2>
+                <p class="dashboard-card-desc">Gestão e criação de orçamentos</p>
+            </a>
+        </main>
+        
+        <footer class="dashboard-footer">
+            <p>&copy; 2024 IMACX. Todos os direitos reservados.</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Initialize Feather Icons
+        document.addEventListener('DOMContentLoaded', () => {
+            feather.replace();
+            createBackgroundDots();
+        });
+        
+        // Create animated background dots
+        function createBackgroundDots() {
+            const container = document.querySelector('.background-pattern');
+            const numDots = 100;
+            
+            for (let i = 0; i < numDots; i++) {
+                const dot = document.createElement('div');
+                dot.classList.add('pattern-dot');
+                
+                // Random position
+                const x = Math.random() * 100;
+                const y = Math.random() * 100;
+                
+                dot.style.left = `${x}%`;
+                dot.style.top = `${y}%`;
+                
+                // Random size
+                const size = 1 + Math.random() * 3;
+                dot.style.width = `${size}px`;
+                dot.style.height = `${size}px`;
+                
+                // Random opacity
+                dot.style.opacity = 0.1 + Math.random() * 0.3;
+                
+                // Animation
+                dot.style.animation = `floatDot ${5 + Math.random() * 10}s infinite ease-in-out`;
+                dot.style.animationDelay = `${Math.random() * 5}s`;
+                
+                container.appendChild(dot);
+            }
+        }
+        
+        // Add keyframes for animation
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @keyframes floatDot {
+                0%, 100% { 
+                    transform: translate(0, 0);
+                    opacity: 0.1;
+                }
+                50% { 
+                    transform: translate(${Math.random() * 30 - 15}px, ${Math.random() * 30 - 15}px);
+                    opacity: 0.3;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
 </body>
 </html> 
